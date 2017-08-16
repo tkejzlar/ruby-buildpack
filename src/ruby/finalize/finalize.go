@@ -103,7 +103,7 @@ func (f *Finalizer) PrecompileAssets() error {
 	cmd := exec.Command("bundle", "exec", "rake", "-n", "assets:precompile")
 	cmd.Dir = f.Stager.BuildDir()
 	if err := cmd.Run(); err != nil {
-		return err
+		return nil
 	}
 
 	//TODO maybe care about user_env_hash ? w database_url mashed in (see ruby.rb:650)

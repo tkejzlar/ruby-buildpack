@@ -264,7 +264,7 @@ func (s *Supplier) HasNode() bool {
 func (s *Supplier) NeedsNode() bool {
 	for _, name := range []string{"webpacker", "execjs"} {
 		hasgem, err := s.Versions.HasGemVersion(name, ">=0.0.0")
-		if err != nil && hasgem {
+		if err == nil && hasgem {
 			return true
 		}
 	}
