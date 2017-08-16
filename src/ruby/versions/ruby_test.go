@@ -2,6 +2,7 @@ package versions_test
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"ruby/versions"
 
@@ -66,14 +67,14 @@ var _ = Describe("Ruby", func() {
 		})
 	})
 
-	FDescribe("Version", func() {
+	Describe("Version", func() {
 		Context("Gemfile has a constraint", func() {
 			BeforeEach(func() {
 				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby "~>2.2.0"`), 0644)).To(Succeed())
 			})
 
 			It("returns highest matching version", func() {
-				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.3", "2.2.4", "2.2.1", "3.1.2"})
+				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.3", "2.2.4", "2.2.1", "2.3.3", "3.1.2"})
 				v := versions.New(tmpDir, manifest)
 				Expect(v.Version()).To(Equal("2.2.4"))
 			})
@@ -101,7 +102,27 @@ var _ = Describe("Ruby", func() {
 			})
 		})
 
-		PIt("BUNDLE_GEMFILE env var is set", func() {})
+		Context("BUNDLE_GEMFILE env var is set", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby "~>2.2.0"`), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile-App"), []byte(`ruby "~>2.3.0"`), 0644)).To(Succeed())
+				os.Setenv("BUNDLE_GEMFILE", "Gemfile-App")
+			})
+			AfterEach(func() { os.Unsetenv("BUNDLE_GEMFILE") })
+
+			It("returns highest matching version", func() {
+				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.3", "2.2.4", "2.2.1", "2.3.3", "3.1.2"})
+				v := versions.New(tmpDir, manifest)
+				Expect(v.Version()).To(Equal("2.3.3"))
+			})
+
+			It("errors if no matching versions", func() {
+				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.0", "3.1.2"})
+				v := versions.New(tmpDir, manifest)
+				_, err := v.Version()
+				Expect(err).To(MatchError("Running ruby: No Matching ruby versions"))
+			})
+		})
 	})
 
 	Describe("JrubyVersion", func() {
@@ -115,7 +136,18 @@ var _ = Describe("Ruby", func() {
 			})
 		})
 
-		PIt("BUNDLE_GEMFILE env var is set", func() {})
+		Context("BUNDLE_GEMFILE env var is set", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby '2.3.3', :engine => 'jruby', :engine_version => '9.1.12.0'`), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile-App"), []byte(`ruby '2.4.4', :engine => 'jruby', :engine_version => '9.2.13.0'`), 0644)).To(Succeed())
+				os.Setenv("BUNDLE_GEMFILE", "Gemfile-App")
+			})
+			AfterEach(func() { os.Unsetenv("BUNDLE_GEMFILE") })
+			It("returns the requested version", func() {
+				v := versions.New(tmpDir, manifest)
+				Expect(v.JrubyVersion()).To(Equal("ruby-2.4.4-jruby-9.2.13.0"))
+			})
+		})
 	})
 
 	Describe("RubyEngineVersion", func() {

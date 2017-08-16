@@ -182,7 +182,11 @@ func (v *Versions) specs() (map[string]string, error) {
 }
 
 func (v *Versions) gemfile() string {
-	return filepath.Join(v.buildDir, "Gemfile")
+	gemfile := "Gemfile"
+	if os.Getenv("BUNDLE_GEMFILE") != "" {
+		gemfile = os.Getenv("BUNDLE_GEMFILE")
+	}
+	return filepath.Join(v.buildDir, gemfile)
 }
 
 func (v *Versions) run(dir, code string, in interface{}) (interface{}, error) {
