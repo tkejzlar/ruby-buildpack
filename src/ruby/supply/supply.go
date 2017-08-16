@@ -360,14 +360,24 @@ func (s *Supplier) InstallGems() error {
 	s.Log.BeginStep("Installing dependencies using bundler %s", version[0])
 	s.Log.Info("Running: bundle %s", strings.Join(args, " "))
 
+	env := os.Environ()
+	env = append(env, "NOKOGIRI_USE_SYSTEM_LIBRARIES=true")
+
 	cmd := exec.Command("bundle", args...)
 	cmd.Dir = s.Stager.BuildDir()
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
-	env := os.Environ()
-	env = append(env, "NOKOGIRI_USE_SYSTEM_LIBRARIES=true")
 	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 
+	s.Log.Info("Cleaning up the bundler cache.")
+	cmd = exec.Command("bundle", "clean")
+	cmd.Dir = s.Stager.BuildDir()
+	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
+	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
+	cmd.Env = env
 	return cmd.Run()
 }
 
