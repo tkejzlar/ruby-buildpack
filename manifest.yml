@@ -152,7 +152,7 @@ dependencies:
   cf_stacks:
   - cflinuxfs2
 exclude_files:
-- ".bin"
+- ".bin/"
 - ".bundle"
 - ".envc"
 - ".envrc"
@@ -170,6 +170,7 @@ exclude_files:
 - cf_spec/
 - lib/
 - log/
+- pkg/
 - repos/
 - ruby_buildpack-*v*.zip
 - scripts/
