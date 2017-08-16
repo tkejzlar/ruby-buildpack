@@ -109,7 +109,7 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	if !s.HasNode() { // TODO If needs node (gem execjs or gem webpacker)
+	if !s.HasNode() && s.NeedsNode() {
 		// TODO choose 4.x vs 6.x based upon rails version
 		if err := s.InstallNode("6.x"); err != nil {
 			s.Log.Error("Unable to install node: %s", err.Error())
@@ -255,6 +255,16 @@ func (s *Supplier) InstallNode(version string) error {
 func (s *Supplier) HasNode() bool {
 	_, err := s.Command.Output(s.Stager.BuildDir(), "node", "--version")
 	return err == nil
+}
+
+func (s *Supplier) NeedsNode() bool {
+	for _, name := range []string{"webpacker", "execjs"} {
+		hasgem, err := s.Versions.HasGemVersion(name, ">=0.0.0")
+		if err != nil && hasgem {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Supplier) InstallJVM() error {
