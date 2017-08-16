@@ -110,8 +110,7 @@ func Run(s *Supplier) error {
 	}
 
 	if !s.HasNode() && s.NeedsNode() {
-		// TODO choose 4.x vs 6.x based upon rails version
-		if err := s.InstallNode("6.x"); err != nil {
+		if err := s.InstallNode(); err != nil {
 			s.Log.Error("Unable to install node: %s", err.Error())
 			return err
 		}
@@ -220,7 +219,7 @@ func (s *Supplier) InstallBundler() error {
 	return nil
 }
 
-func (s *Supplier) InstallNode(version string) error {
+func (s *Supplier) InstallNode() error {
 	var dep libbuildpack.Dependency
 
 	tempDir, err := ioutil.TempDir("", "node")
@@ -229,8 +228,13 @@ func (s *Supplier) InstallNode(version string) error {
 	}
 	nodeInstallDir := filepath.Join(s.Stager.DepDir(), "node")
 
-	if version == "" {
-		return fmt.Errorf("must supply node version")
+	version := "4.x"
+	rails51, err := s.Versions.HasGemVersion("rails", ">=5.1.0.beta")
+	if err != nil {
+		return err
+	}
+	if rails51 {
+		version = "6.x"
 	}
 
 	versions := s.Manifest.AllDependencyVersions("node")
