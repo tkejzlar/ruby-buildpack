@@ -2,9 +2,6 @@ require 'bundler/setup'
 require 'machete'
 require 'machete/matchers'
 
-require 'language_pack'
-require 'cloud_foundry/language_pack/extensions'
-
 `mkdir -p log`
 Machete.logger = Machete::Logger.new("log/integration.log")
 
