@@ -8,6 +8,8 @@ describe 'CF Specific log output' do
     Machete::CF::DeleteApp.new.execute(app)
   end
 
+  # TODO This test seems pointless
+
   context 'when no Procfile is present' do
     it "does not output Procfile and default usage warning" do
       expect(app).to_not have_logged "No Procfile detected, using the default"
