@@ -50,7 +50,7 @@ type App struct {
 
 func New(fixture string) *App {
 	return &App{
-		Name:      filepath.Base(fixture) + "-" + randStringRunes(20),
+		Name:      filepath.Base(fixture) + "-" + RandStringRunes(20),
 		Path:      fixture,
 		Buildpack: "",
 		appGUID:   "",
@@ -85,6 +85,15 @@ func DeleteOrphanedRoutes() error {
 	return nil
 }
 
+func DeleteBuildpack(language string) error {
+	command := exec.Command("cf", "delete-buildpack", "-f", fmt.Sprintf("%s_buildpack", language))
+	if data, err := command.CombinedOutput(); err != nil {
+		fmt.Println(string(data))
+		return err
+	}
+	return nil
+}
+
 func UpdateBuildpack(language, file string) error {
 	command := exec.Command("cf", "update-buildpack", fmt.Sprintf("%s_buildpack", language), "-p", file, "--enable")
 	if data, err := command.CombinedOutput(); err != nil {
@@ -94,15 +103,48 @@ func UpdateBuildpack(language, file string) error {
 	return nil
 }
 
+func createBuildpack(language, file string) error {
+	command := exec.Command("cf", "create-buildpack", fmt.Sprintf("%s_buildpack", language), file, "100", "--enable")
+	if _, err := command.CombinedOutput(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateOrUpdateBuildpack(language, file string) error {
+	createBuildpack(language, file)
+	return UpdateBuildpack(language, file)
+}
+
 func (a *App) ConfirmBuildpack(version string) error {
-	if !strings.Contains(a.Stdout.String(), fmt.Sprintf("Buildpack version %s", version)) {
+	if !strings.Contains(a.Stdout.String(), fmt.Sprintf("Buildpack version %s\n", version)) {
 		var versionLine string
 		for _, line := range strings.Split(a.Stdout.String(), "\n") {
 			if versionLine == "" && strings.Contains(line, " Buildpack version ") {
 				versionLine = line
 			}
 		}
-		return fmt.Errorf("Wrong buildpack version(%s): %s", version, versionLine)
+		return fmt.Errorf("Wrong buildpack version. Expected '%s', but this was logged: %s", version, versionLine)
+	}
+	return nil
+}
+
+func (a *App) RunTask(command string) ([]byte, error) {
+	cmd := exec.Command("cf", "run-task", a.Name, command)
+	cmd.Stderr = DefaultStdoutStderr
+	bytes, err := cmd.Output()
+	if err != nil {
+		return bytes, err
+	}
+	return bytes, nil
+}
+
+func (a *App) Restart() error {
+	command := exec.Command("cf", "restart", a.Name)
+	command.Stdout = DefaultStdoutStderr
+	command.Stderr = DefaultStdoutStderr
+	if err := command.Run(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -112,7 +154,11 @@ func (a *App) SetEnv(key, value string) {
 }
 
 func (a *App) SpaceGUID() (string, error) {
-	bytes, err := ioutil.ReadFile(filepath.Join(os.Getenv("HOME"), ".cf", "config.json"))
+	cfHome := os.Getenv("CF_HOME")
+	if cfHome == "" {
+		cfHome = os.Getenv("HOME")
+	}
+	bytes, err := ioutil.ReadFile(filepath.Join(cfHome, ".cf", "config.json"))
 	if err != nil {
 		return "", err
 	}
@@ -301,7 +347,7 @@ func (a *App) Destroy() error {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
 
-func randStringRunes(n int) string {
+func RandStringRunes(n int) string {
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]

@@ -2,7 +2,6 @@ package libbuildpack
 
 import (
 	"io"
-	"os"
 	"os/exec"
 )
 
@@ -16,13 +15,4 @@ func (c *Command) Execute(dir string, stdout io.Writer, stderr io.Writer, progra
 	cmd.Dir = dir
 
 	return cmd.Run()
-}
-
-func (c *Command) Output(dir string, program string, args ...string) (string, error) {
-	cmd := exec.Command(program, args...)
-	cmd.Stderr = os.Stderr // TODO remove this line
-	cmd.Dir = dir
-
-	output, err := cmd.Output()
-	return string(output), err
 }
