@@ -81,7 +81,38 @@ var _ = Describe("Supply", func() {
 	PIt("InstallBundler", func() {})
 	PIt("InstallNode", func() {})
 	PIt("InstallRuby", func() {})
-	PIt("InstallGems", func() {})
+
+	Describe("InstallGems", func() {
+		const windowsWarning = "**WARNING** Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings."
+
+		PIt("BACK FILL", func() {})
+
+		Context("Windows Gemfile", func() {
+			BeforeEach(func() {
+				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes()
+				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\r\ngem \"rack\"\r\n"), 0644)).To(Succeed())
+			})
+			It("Warns the user", func() {
+				Expect(supplier.InstallGems()).To(Succeed())
+				Expect(buffer.String()).To(ContainSubstring(windowsWarning))
+			})
+		})
+
+		Context("UNIX Gemfile", func() {
+			BeforeEach(func() {
+				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes()
+				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\ngem \"rack\"\n"), 0644)).To(Succeed())
+			})
+			It("Warns the user", func() {
+				Expect(supplier.InstallGems()).To(Succeed())
+				Expect(buffer.String()).ToNot(ContainSubstring(windowsWarning))
+			})
+		})
+
+		PIt("Windows Gemfile.lock", func() {})
+	})
 
 	Describe("InstallJVM", func() {
 		Context("app/.jdk exists", func() {

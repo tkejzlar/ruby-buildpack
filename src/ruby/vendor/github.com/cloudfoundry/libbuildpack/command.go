@@ -26,3 +26,7 @@ func (c *Command) Output(dir string, program string, args ...string) (string, er
 	output, err := cmd.Output()
 	return string(output), err
 }
+
+func (c *Command) Run(cmd *exec.Cmd) error {
+	return cmd.Run()
+}

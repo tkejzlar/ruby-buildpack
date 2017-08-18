@@ -1,6 +1,7 @@
 package supply
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +18,7 @@ import (
 type Command interface {
 	Execute(string, io.Writer, io.Writer, string, ...string) error
 	Output(string, string, ...string) (string, error)
+	Run(*exec.Cmd) error
 }
 
 type Manifest interface {
@@ -340,6 +342,8 @@ func (s *Supplier) InstallGems() error {
 	// TODO Warn .bundle/config ruby.rb:490
 	// TODO Warn windows Gemfile.lock ruby:500 (and remove Gemfile.lock)
 
+	s.warnWindowsGemfile()
+
 	without := os.Getenv("BUNDLE_WITHOUT")
 	if without == "" {
 		without = "development:test"
@@ -368,17 +372,18 @@ func (s *Supplier) InstallGems() error {
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	if err := s.Command.Run(cmd); err != nil {
 		return err
 	}
 
 	s.Log.Info("Cleaning up the bundler cache.")
+
 	cmd = exec.Command("bundle", "clean")
 	cmd.Dir = s.Stager.BuildDir()
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
 	cmd.Env = env
-	return cmd.Run()
+	return s.Command.Run(cmd)
 }
 
 func (s *Supplier) CreateDefaultEnv() error {
@@ -438,4 +443,12 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle"
 	}
 
 	return s.Stager.WriteProfileD("ruby.sh", scriptContents)
+}
+
+func (s *Supplier) warnWindowsGemfile() {
+	if body, err := ioutil.ReadFile(filepath.Join(s.Stager.BuildDir(), "Gemfile")); err == nil {
+		if bytes.Contains(body, []byte("\r\n")) {
+			s.Log.Warning("Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings.")
+		}
+	}
 }
