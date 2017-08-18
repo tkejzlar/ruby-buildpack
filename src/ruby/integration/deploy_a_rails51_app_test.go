@@ -27,7 +27,7 @@ var _ = Describe("Rails 5.1 (Webpack/Yarn) App", func() {
 
 		It("", func() {
 			PushAppAndConfirm(app)
-			Expect(app.Stdout.String()).To(MatchRegexp("Downloaded.*node-6\\."))
+			Expect(app.Stdout.String()).To(ContainSubstring("Installing node 6."))
 
 			Expect(app.GetBody("/")).To(ContainSubstring("Hello World"))
 			Eventually(func() string { return app.Stdout.String() }, 10*time.Second).Should(ContainSubstring(`Started GET "/" for`))

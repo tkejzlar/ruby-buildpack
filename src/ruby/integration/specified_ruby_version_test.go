@@ -27,7 +27,7 @@ var _ = Describe("CF Ruby Buildpack", func() {
 		PushAppAndConfirm(app)
 
 		By("uses the specified ruby version", func() {
-			Expect(app.Stdout.String()).To(ContainSubstring("Using Ruby version: ruby-2.2.7"))
+			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby 2.2.7"))
 		})
 	})
 

@@ -60,7 +60,7 @@ func (v *Versions) Version() (string, error) {
 
 		r = Gem::Requirement.create(b.versions)
 		version = input.select { |v| r.satisfied_by? Gem::Version.new(v) }.sort.last
-		raise 'No Matching ruby versions' unless version
+		raise "No Matching versions, ruby #{r} not found in this buildpack" unless version
 		version
 	`, filepath.Base(gemfile), filepath.Base(gemfile))
 
