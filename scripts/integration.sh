@@ -16,8 +16,4 @@ GINKGO_ATTEMPTS=${GINKGO_ATTEMPTS:-2}
 
 cd $ROOT/src/ruby/integration
 ginkgo -r --flakeAttempts=$GINKGO_ATTEMPTS -nodes $GINKGO_NODES -- --cached
-
-echo
-echo "SKIPPING UNCACHED -- UNDO"
-echo
-# ginkgo -r --flakeAttempts=$GINKGO_ATTEMPTS -nodes $GINKGO_NODES -- --cached=false
+ginkgo -r --flakeAttempts=$GINKGO_ATTEMPTS -nodes $GINKGO_NODES -- --cached=false
