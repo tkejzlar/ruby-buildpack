@@ -33,6 +33,10 @@ func Run(f *Finalizer) error {
 		f.Log.Error("Error determining versions: %v", err)
 	}
 
+	if err := f.InstallPlugins(); err != nil {
+		f.Log.Error("Error installing plugins: %v", err)
+	}
+
 	if err := f.WriteDatabaseYml(); err != nil {
 		f.Log.Error("Error writing database.yml: %v", err)
 	}
