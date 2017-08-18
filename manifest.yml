@@ -188,7 +188,6 @@ include_files:
 - PULL_REQUEST_TEMPLATE
 - README.md
 - VERSION
-- bin/
 - bin/compile
 - bin/detect
 - bin/finalize
