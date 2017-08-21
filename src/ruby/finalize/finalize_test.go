@@ -256,4 +256,31 @@ var _ = Describe("Finalize", func() {
 			})
 		})
 	})
+
+	FDescribe("DeleteVendorBundle", func() {
+		Context("vendor/bundle in pushed app", func() {
+			BeforeEach(func() {
+				Expect(os.MkdirAll(filepath.Join(buildDir, "vendor", "bundle"), 0755)).To(Succeed())
+			})
+
+			It("warns about the presence of the directory", func() {
+				finalizer.DeleteVendorBundle()
+				Expect(buffer.String()).To(ContainSubstring("**WARNING** Removing `vendor/bundle`."))
+				Expect(buffer.String()).To(ContainSubstring("Checking in `vendor/bundle` is not supported. Please remove this directory and add it to your .gitignore. To vendor your gems with Bundler, use `bundle pack` instead."))
+			})
+
+			It("deletes the directory", func() {
+				finalizer.DeleteVendorBundle()
+				Expect(filepath.Join(buildDir, "vendor", "bundle")).ToNot(BeADirectory())
+			})
+		})
+
+		Context("vendor/bundle not in pushed app", func() {
+			It("does not warn about the presence of the directory", func() {
+				finalizer.DeleteVendorBundle()
+				Expect(buffer.String()).ToNot(ContainSubstring("**WARNING** Removing `vendor/bundle`."))
+			})
+		})
+
+	})
 })

@@ -421,7 +421,7 @@ export RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-enabled}
 export RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-enabled}
 
 export GEM_HOME=${GEM_HOME:-$DEPS_DIR/%s/gem_home}
-export GEM_PATH=${GEM_PATH:-GEM_PATH=$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
+export GEM_PATH=${GEM_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
 
 ## TODO Is this the right plan?
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle"

@@ -31,25 +31,35 @@ func Run(f *Finalizer) error {
 
 	if err := f.Setup(); err != nil {
 		f.Log.Error("Error determining versions: %v", err)
+		return err
 	}
 
 	if err := f.InstallPlugins(); err != nil {
 		f.Log.Error("Error installing plugins: %v", err)
+		return err
 	}
 
 	if err := f.WriteDatabaseYml(); err != nil {
 		f.Log.Error("Error writing database.yml: %v", err)
+		return err
 	}
 
 	if err := f.PrecompileAssets(); err != nil {
 		f.Log.Error("Error precompiling assets: %v", err)
+		return err
 	}
 
 	f.BestPracticeWarnings()
 
+	if err := f.DeleteVendorBundle(); err != nil {
+		f.Log.Error("Error deleting vendor/bundle: %v", err)
+		return err
+	}
+
 	data, err := f.GenerateReleaseYaml()
 	if err != nil {
 		f.Log.Error("Error generating release YAML: %v", err)
+		return err
 	}
 	releasePath := filepath.Join(f.Stager.BuildDir(), "tmp", "ruby-buildpack-release-step.yml")
 	libbuildpack.NewYAML().Write(releasePath, data)
@@ -212,4 +222,15 @@ func (f *Finalizer) BestPracticeWarnings() {
 	if os.Getenv("RAILS_ENV") != "production" {
 		f.Log.Warning("You are deploying to a non-production environment: %s", os.Getenv("RAILS_ENV"))
 	}
+}
+
+func (f *Finalizer) DeleteVendorBundle() error {
+	if exists, err := libbuildpack.FileExists(filepath.Join(f.Stager.BuildDir(), "vendor", "bundle")); err != nil {
+		return err
+	} else if exists {
+		f.Log.Warning("Removing `vendor/bundle`.\nChecking in `vendor/bundle` is not supported. Please remove this directory and add it to your .gitignore. To vendor your gems with Bundler, use `bundle pack` instead.")
+		return os.RemoveAll(filepath.Join(f.Stager.BuildDir(), "vendor", "bundle"))
+	}
+
+	return nil
 }

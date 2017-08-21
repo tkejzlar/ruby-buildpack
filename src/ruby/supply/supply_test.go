@@ -283,7 +283,7 @@ var _ = Describe("Supply", func() {
 				Expect(supplier.WriteProfileD("somerubyengine")).To(Succeed())
 				contents, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "profile.d", "ruby.sh"))
 				Expect(err).ToNot(HaveOccurred())
-				Expect(string(contents)).To(ContainSubstring("export GEM_PATH=${GEM_PATH:-GEM_PATH=$DEPS_DIR/9/vendor_bundle/somerubyengine/2.3.19:$DEPS_DIR/9/gem_home:$DEPS_DIR/9/bundler}"))
+				Expect(string(contents)).To(ContainSubstring("export GEM_PATH=${GEM_PATH:-$DEPS_DIR/9/vendor_bundle/somerubyengine/2.3.19:$DEPS_DIR/9/gem_home:$DEPS_DIR/9/bundler}"))
 			})
 		})
 	})
