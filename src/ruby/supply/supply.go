@@ -407,9 +407,10 @@ func (s *Supplier) InstallGems() error {
 
 func (s *Supplier) CreateDefaultEnv() error {
 	var environmentDefaults = map[string]string{
-		"RAILS_ENV":    "production",
-		"RACK_ENV":     "production",
-		"RAILS_GROUPS": "assets",
+		"RAILS_ENV":            "production",
+		"RACK_ENV":             "production",
+		"RAILS_GROUPS":         "assets",
+		"BUNDLE_IGNORE_CONFIG": "true",
 	}
 
 	for envVar, envDefault := range environmentDefaults {
