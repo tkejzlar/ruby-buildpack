@@ -127,8 +127,6 @@ func (f *Finalizer) PrecompileAssets() error {
 		return nil
 	}
 
-	//TODO maybe care about user_env_hash ? w database_url mashed in (see ruby.rb:650)
-
 	f.Log.BeginStep("Precompiling assets")
 	startTime := time.Now()
 	cmd = exec.Command("bundle", "exec", "rake", "assets:precompile")

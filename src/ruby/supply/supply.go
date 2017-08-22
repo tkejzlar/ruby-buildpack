@@ -345,9 +345,7 @@ func (w *IndentedWriter) Write(p []byte) (n int, err error) {
 }
 
 func (s *Supplier) InstallGems() error {
-	// TODO Warn .bundle/config ruby.rb:490
-	// TODO Warn windows Gemfile.lock ruby:500 (and remove Gemfile.lock)
-
+	s.warnBundleConfig()
 	s.warnWindowsGemfile()
 
 	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
@@ -360,9 +358,6 @@ func (s *Supplier) InstallGems() error {
 	if without == "" {
 		without = "development:test"
 	}
-	// FROM RUBY :: "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
-	// NOTE: Skip binstubs since we should install them into app during finalize
-	// TODO install binstubs during finalize
 
 	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
 	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile() + ".lock"); err != nil {
@@ -435,8 +430,8 @@ export RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-enabled}
 export GEM_HOME=${GEM_HOME:-$DEPS_DIR/%s/gem_home}
 export GEM_PATH=${GEM_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
 
-## TODO Is this the right plan?
-bundle config PATH "$DEPS_DIR/%s/vendor_bundle"
+## Change to current DEPS_DIR 
+bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx)
 
 	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
@@ -462,5 +457,11 @@ func (s *Supplier) warnWindowsGemfile() {
 		if bytes.Contains(body, []byte("\r\n")) {
 			s.Log.Warning("Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings.")
 		}
+	}
+}
+
+func (s *Supplier) warnBundleConfig() {
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), ".bundle", "config")); err == nil && exists {
+		s.Log.Warning("You have the `.bundle/config` file checked into your repository\nIt contains local state like the location of the installed bundle\nas well as configured git local gems, and other settings that should\nnot be shared between multiple checkouts of a single repo. Please\nremove the `.bundle/` folder from your repo and add it to your `.gitignore` file.")
 	}
 }
