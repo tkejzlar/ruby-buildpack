@@ -14,7 +14,7 @@ var _ = Describe("requiring execjs", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "with_execjs"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "with_execjs"))
 		app.SetEnv("BP_DEBUG", "1")
 	})
 

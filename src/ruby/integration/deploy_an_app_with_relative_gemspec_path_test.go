@@ -14,7 +14,7 @@ var _ = Describe("App with relative gemspec path", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "relative_gemspec_path"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "relative_gemspec_path"))
 	})
 
 	It("loads the gem with the relative gemspec path", func() {

@@ -20,7 +20,7 @@ var _ = Describe("App with custom Gemfile", func() {
 	})
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "custom_gemfile"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "custom_gemfile"))
 	})
 
 	It("uses the version of ruby specified in Gemfile-APP", func() {

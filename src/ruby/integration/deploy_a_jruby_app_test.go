@@ -15,7 +15,7 @@ var _ = Describe("JRuby App", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "sinatra_jruby"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "sinatra_jruby"))
 		app.Memory = "512M"
 	})
 

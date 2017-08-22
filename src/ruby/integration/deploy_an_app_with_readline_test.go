@@ -16,7 +16,7 @@ var _ = Describe("CF Ruby Buildpack", func() {
 	Context("in an online environment", func() {
 		BeforeEach(func() {
 			SkipUnlessUncached()
-			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "with_readline"))
+			app = cutlass.New(filepath.Join(bpDir, "fixtures", "with_readline"))
 		})
 
 		It("", func() {

@@ -15,7 +15,7 @@ var _ = Describe("CF Ruby Buildpack", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "specified_ruby_version"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "specified_ruby_version"))
 	})
 
 	It("", func() {

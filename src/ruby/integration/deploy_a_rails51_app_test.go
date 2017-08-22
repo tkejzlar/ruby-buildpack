@@ -15,7 +15,7 @@ var _ = Describe("Rails 5.1 (Webpack/Yarn) App", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails51"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails51"))
 	})
 
 	It("Installs node6 and runs", func() {

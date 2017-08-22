@@ -19,7 +19,7 @@ var _ = Describe("Rails 4 App", func() {
 		})
 
 		It("", func() {
-			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
+			app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4"))
 			PushAppAndConfirm(app)
 
 			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
@@ -33,7 +33,7 @@ var _ = Describe("Rails 4 App", func() {
 		BeforeEach(SkipUnlessUncached)
 
 		It("app has dependencies", func() {
-			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
+			app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4"))
 			PushAppAndConfirm(app)
 			Expect(app.Stdout.String()).To(ContainSubstring("Installing node 4."))
 			Expect(app.Stdout.String()).To(ContainSubstring("Download [https://"))
@@ -43,7 +43,7 @@ var _ = Describe("Rails 4 App", func() {
 
 		Context("app has non vendored dependencies", func() {
 			It("", func() {
-				app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4_not_vendored"))
+				app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4_not_vendored"))
 				Expect(filepath.Join(app.Path, "vendor")).ToNot(BeADirectory())
 
 				PushAppAndConfirm(app)

@@ -14,7 +14,7 @@ var _ = Describe("App with dependencies installed in vendor/bundle", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "with_vendor_bundle"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "with_vendor_bundle"))
 	})
 
 	It("", func() {

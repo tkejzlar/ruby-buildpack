@@ -14,7 +14,7 @@ var _ = Describe("App with windows Gemfile", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "windows"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "windows"))
 		app.SetEnv("BP_DEBUG", "1")
 	})
 

@@ -15,7 +15,7 @@ var _ = Describe("CF Ruby Buildpack", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
-		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "unsupported_ruby"))
+		app = cutlass.New(filepath.Join(bpDir, "fixtures", "unsupported_ruby"))
 	})
 
 	It("displays a nice error message when Ruby 99.99.99 is specified", func() {
