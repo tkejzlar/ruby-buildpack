@@ -36,7 +36,7 @@ type output struct {
 }
 
 func (v *Versions) Engine() (string, error) {
-	gemfile := v.gemfile()
+	gemfile := v.Gemfile()
 	code := fmt.Sprintf(`
 		b = Bundler::Dsl.evaluate('%s', '%s.lock', {}).ruby_version
 	  return 'ruby' if !b
@@ -53,7 +53,7 @@ func (v *Versions) Engine() (string, error) {
 
 func (v *Versions) Version() (string, error) {
 	versions := v.manifest.AllDependencyVersions("ruby")
-	gemfile := v.gemfile()
+	gemfile := v.Gemfile()
 	code := fmt.Sprintf(`
 		b = Bundler::Dsl.evaluate('%s', '%s.lock', {}).ruby_version
 	  return '' if !b
@@ -79,7 +79,7 @@ func (v *Versions) Version() (string, error) {
 }
 
 func (v *Versions) JrubyVersion() (string, error) {
-	gemfile := v.gemfile()
+	gemfile := v.Gemfile()
 	code := fmt.Sprintf(`
 		b = Bundler::Dsl.evaluate('%s', '%s.lock', {}).ruby_version
 	  return '' if !b
@@ -160,6 +160,21 @@ func (v *Versions) GemMajorVersion(gem string) (int, error) {
 	}
 }
 
+func (v *Versions) HasWindowsGemfileLock() (bool, error) {
+	code := `
+		parsed = Bundler::LockfileParser.new(File.read(input["gemfilelock"]))
+		!parsed.platforms.detect do |platform|
+      /mingw|mswin/.match(platform.os) if platform.is_a?(Gem::Platform)
+    end.nil?
+	`
+
+	data, err := v.run(filepath.Dir(v.Gemfile()), code, map[string]string{"gemfilelock": fmt.Sprintf("%s.lock", v.Gemfile())})
+	if err != nil {
+		return false, err
+	}
+	return data.(bool), nil
+}
+
 func (v *Versions) specs() (map[string]string, error) {
 	if len(v.cachedSpecs) > 0 {
 		return v.cachedSpecs, nil
@@ -169,7 +184,7 @@ func (v *Versions) specs() (map[string]string, error) {
 		Hash[*(parsed.specs.map{|spec| [spec.name, spec.version.to_s]}).flatten]
 	`
 
-	data, err := v.run(filepath.Dir(v.gemfile()), code, map[string]string{"gemfilelock": fmt.Sprintf("%s.lock", v.gemfile())})
+	data, err := v.run(filepath.Dir(v.Gemfile()), code, map[string]string{"gemfilelock": fmt.Sprintf("%s.lock", v.Gemfile())})
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +196,7 @@ func (v *Versions) specs() (map[string]string, error) {
 	return v.cachedSpecs, nil
 }
 
-func (v *Versions) gemfile() string {
+func (v *Versions) Gemfile() string {
 	gemfile := "Gemfile"
 	if os.Getenv("BUNDLE_GEMFILE") != "" {
 		gemfile = os.Getenv("BUNDLE_GEMFILE")

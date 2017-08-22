@@ -32,6 +32,32 @@ var _ = Describe("Ruby", func() {
 		mockCtrl.Finish()
 	})
 
+	Describe("HasWindowsGemfileLock", func() {
+		Context("Gemfile.lock has mingw platform", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby "~>2.2.0"`), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile.lock"), []byte(windowsGemfileLockFixture), 0644)).To(Succeed())
+			})
+
+			It("returns ruby", func() {
+				v := versions.New(tmpDir, manifest)
+				Expect(v.HasWindowsGemfileLock()).To(BeTrue())
+			})
+		})
+
+		Context("Gemfile.lock has linux platform", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby "~>2.2.0"`), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile.lock"), []byte(linuxGemfileLockFixture), 0644)).To(Succeed())
+			})
+
+			It("returns ruby", func() {
+				v := versions.New(tmpDir, manifest)
+				Expect(v.HasWindowsGemfileLock()).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("Engine", func() {
 		Context("Gemfile has a mri", func() {
 			BeforeEach(func() {

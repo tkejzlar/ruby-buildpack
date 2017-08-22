@@ -32,6 +32,8 @@ type Versions interface {
 	JrubyVersion() (string, error)
 	RubyEngineVersion() (string, error)
 	HasGemVersion(gem string, constraints ...string) (bool, error)
+	HasWindowsGemfileLock() (bool, error)
+	Gemfile() string
 }
 
 type Stager interface {
@@ -61,6 +63,10 @@ type Supplier struct {
 
 func Run(s *Supplier) error {
 	s.Log.BeginStep("Supplying Ruby")
+
+	if os.Getenv("BP_DEBUG") != "" {
+
+	}
 
 	if err := s.Cache.Restore(); err != nil {
 		s.Log.Error("Unable to restore cache: %s", err.Error())
@@ -344,6 +350,12 @@ func (s *Supplier) InstallGems() error {
 
 	s.warnWindowsGemfile()
 
+	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
+		return err
+	} else if hasFile {
+		os.Remove(s.Versions.Gemfile() + ".lock")
+	}
+
 	without := os.Getenv("BUNDLE_WITHOUT")
 	if without == "" {
 		without = "development:test"
@@ -351,12 +363,11 @@ func (s *Supplier) InstallGems() error {
 	// FROM RUBY :: "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
 	// NOTE: Skip binstubs since we should install them into app during finalize
 	// TODO install binstubs during finalize
+
 	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle")}
-	exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Gemfile.lock"))
-	if err != nil {
+	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile() + ".lock"); err != nil {
 		return err
-	}
-	if exists {
+	} else if exists {
 		args = append(args, "--deployment")
 	}
 
