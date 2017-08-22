@@ -89,6 +89,8 @@ var _ = Describe("Supply", func() {
 
 		Context("Windows Gemfile", func() {
 			BeforeEach(func() {
+				mockVersions.EXPECT().HasWindowsGemfileLock().Return(true, nil)
+				mockVersions.EXPECT().Gemfile().AnyTimes().Return(filepath.Join(buildDir, "Gemfile"))
 				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes()
 				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
 				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\r\ngem \"rack\"\r\n"), 0644)).To(Succeed())
@@ -101,6 +103,8 @@ var _ = Describe("Supply", func() {
 
 		Context("UNIX Gemfile", func() {
 			BeforeEach(func() {
+				mockVersions.EXPECT().HasWindowsGemfileLock().Return(false, nil)
+				mockVersions.EXPECT().Gemfile().AnyTimes().Return(filepath.Join(buildDir, "Gemfile"))
 				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes()
 				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
 				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\ngem \"rack\"\n"), 0644)).To(Succeed())
@@ -155,11 +159,16 @@ var _ = Describe("Supply", func() {
 		AfterEach(func() {
 			os.Unsetenv("RAILS_ENV")
 			os.Unsetenv("RACK_ENV")
+			os.Unsetenv("RAILS_GROUPS")
 		})
 
 		It("Sets RAILS_ENV", func() {
 			Expect(supplier.CreateDefaultEnv()).To(Succeed())
 			Expect(os.Getenv("RAILS_ENV")).To(Equal("production"))
+		})
+		It("Sets RAILS_GROUPS", func() {
+			Expect(supplier.CreateDefaultEnv()).To(Succeed())
+			Expect(os.Getenv("RAILS_GROUPS")).To(Equal("assets"))
 		})
 		It("Sets RACK_ENV", func() {
 			Expect(supplier.CreateDefaultEnv()).To(Succeed())
@@ -170,6 +179,12 @@ var _ = Describe("Supply", func() {
 			data, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "env", "RAILS_ENV"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(data)).To(Equal("production"))
+		})
+		It("Sets RAILS_GROUPS in env directory", func() {
+			Expect(supplier.CreateDefaultEnv()).To(Succeed())
+			data, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "env", "RAILS_GROUPS"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(data)).To(Equal("assets"))
 		})
 		It("Sets RACK_ENV in env directory", func() {
 			Expect(supplier.CreateDefaultEnv()).To(Succeed())
@@ -188,6 +203,19 @@ var _ = Describe("Supply", func() {
 			It("does not set RAILS_ENV in env directory", func() {
 				Expect(supplier.CreateDefaultEnv()).To(Succeed())
 				Expect(filepath.Join(depsDir, depsIdx, "env", "RAILS_ENV")).ToNot(BeAnExistingFile())
+			})
+		})
+
+		Context("RAILS_GROUPS is set", func() {
+			BeforeEach(func() { os.Setenv("RAILS_GROUPS", "test") })
+
+			It("does not set RAILS_ENV", func() {
+				Expect(supplier.CreateDefaultEnv()).To(Succeed())
+				Expect(os.Getenv("RAILS_GROUPS")).To(Equal("test"))
+			})
+			It("does not set RAILS_ENV in env directory", func() {
+				Expect(supplier.CreateDefaultEnv()).To(Succeed())
+				Expect(filepath.Join(depsDir, depsIdx, "env", "RAILS_GROUPS")).ToNot(BeAnExistingFile())
 			})
 		})
 

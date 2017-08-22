@@ -364,7 +364,7 @@ func (s *Supplier) InstallGems() error {
 	// NOTE: Skip binstubs since we should install them into app during finalize
 	// TODO install binstubs during finalize
 
-	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle")}
+	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
 	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile() + ".lock"); err != nil {
 		return err
 	} else if exists {
@@ -399,8 +399,9 @@ func (s *Supplier) InstallGems() error {
 
 func (s *Supplier) CreateDefaultEnv() error {
 	var environmentDefaults = map[string]string{
-		"RAILS_ENV": "production",
-		"RACK_ENV":  "production",
+		"RAILS_ENV":    "production",
+		"RACK_ENV":     "production",
+		"RAILS_GROUPS": "assets",
 	}
 
 	for envVar, envDefault := range environmentDefaults {
