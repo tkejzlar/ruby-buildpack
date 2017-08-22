@@ -283,7 +283,7 @@ var _ = Describe("Finalize", func() {
 		})
 	})
 
-	FDescribe("CopyToAppBin", func() {
+	Describe("CopyToAppBin", func() {
 		BeforeEach(func() {
 			Expect(os.MkdirAll(filepath.Join(buildDir, "bin"), 0755)).To(Succeed())
 			Expect(os.MkdirAll(filepath.Join(depsDir, depsIdx, "binstubs"), 0755)).To(Succeed())

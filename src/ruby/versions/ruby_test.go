@@ -109,7 +109,7 @@ var _ = Describe("Ruby", func() {
 				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "3.1.2"})
 				v := versions.New(tmpDir, manifest)
 				_, err := v.Version()
-				Expect(err).To(MatchError("Running ruby: No Matching ruby versions"))
+				Expect(err).To(MatchError("Running ruby: No Matching versions, ruby ~> 2.2.0 not found in this buildpack"))
 			})
 		})
 
@@ -146,7 +146,7 @@ var _ = Describe("Ruby", func() {
 				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.0", "3.1.2"})
 				v := versions.New(tmpDir, manifest)
 				_, err := v.Version()
-				Expect(err).To(MatchError("Running ruby: No Matching ruby versions"))
+				Expect(err).To(MatchError("Running ruby: No Matching versions, ruby ~> 2.3.0 not found in this buildpack"))
 			})
 		})
 	})
