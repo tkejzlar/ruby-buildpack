@@ -257,7 +257,7 @@ var _ = Describe("Finalize", func() {
 		})
 	})
 
-	FDescribe("DeleteVendorBundle", func() {
+	Describe("DeleteVendorBundle", func() {
 		Context("vendor/bundle in pushed app", func() {
 			BeforeEach(func() {
 				Expect(os.MkdirAll(filepath.Join(buildDir, "vendor", "bundle"), 0755)).To(Succeed())
@@ -281,6 +281,48 @@ var _ = Describe("Finalize", func() {
 				Expect(buffer.String()).ToNot(ContainSubstring("**WARNING** Removing `vendor/bundle`."))
 			})
 		})
+	})
 
+	FDescribe("CopyToAppBin", func() {
+		BeforeEach(func() {
+			Expect(os.MkdirAll(filepath.Join(buildDir, "bin"), 0755)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(depsDir, depsIdx, "binstubs"), 0755)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(depsDir, depsIdx, "bin"), 0755)).To(Succeed())
+		})
+		Context("file exists in app/bin", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, "bin", "rake"), []byte("original"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "binstubs", "rake"), []byte("dep/binstub"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "bin", "rake"), []byte("dep/bin"), 0755)).To(Succeed())
+			})
+
+			It("remains unchanged", func() {
+				Expect(finalizer.CopyToAppBin()).To(Succeed())
+				Expect(ioutil.ReadFile(filepath.Join(buildDir, "bin", "rake"))).To(ContainSubstring("original"))
+			})
+		})
+
+		Context("file exists in dep/bin and dep/binstubs", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "binstubs", "rake"), []byte("dep/binstub"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "bin", "rake"), []byte("dep/bin"), 0755)).To(Succeed())
+			})
+
+			It("copies deps binstubs file", func() {
+				Expect(finalizer.CopyToAppBin()).To(Succeed())
+				Expect(ioutil.ReadFile(filepath.Join(buildDir, "bin", "rake"))).To(ContainSubstring("dep/binstub"))
+			})
+		})
+
+		Context("file only exists in dep/bin", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "bin", "rake"), []byte("dep/bin"), 0755)).To(Succeed())
+			})
+
+			It("creates a shim for dep/bin", func() {
+				Expect(finalizer.CopyToAppBin()).To(Succeed())
+				Expect(ioutil.ReadFile(filepath.Join(buildDir, "bin", "rake"))).To(ContainSubstring(`exec $DEPS_DIR/%s/bin/rake "$@"`, depsIdx))
+			})
+		})
 	})
 })

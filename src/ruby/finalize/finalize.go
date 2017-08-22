@@ -14,6 +14,8 @@ import (
 
 type Stager interface {
 	BuildDir() string
+	DepsIdx() string
+	DepDir() string
 }
 
 type Finalizer struct {
@@ -53,6 +55,11 @@ func Run(f *Finalizer) error {
 
 	if err := f.DeleteVendorBundle(); err != nil {
 		f.Log.Error("Error deleting vendor/bundle: %v", err)
+		return err
+	}
+
+	if err := f.CopyToAppBin(); err != nil {
+		f.Log.Error("Error creating files in bin: %v", err)
 		return err
 	}
 
@@ -232,5 +239,44 @@ func (f *Finalizer) DeleteVendorBundle() error {
 		return os.RemoveAll(filepath.Join(f.Stager.BuildDir(), "vendor", "bundle"))
 	}
 
+	return nil
+}
+
+func (f *Finalizer) CopyToAppBin() error {
+	f.Log.BeginStep("Copy binaries to app/bin directory")
+
+	binDir := filepath.Join(f.Stager.BuildDir(), "bin")
+
+	files, err := ioutil.ReadDir(filepath.Join(f.Stager.DepDir(), "binstubs"))
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		source := filepath.Join(f.Stager.DepDir(), "binstubs", file.Name())
+		target := filepath.Join(binDir, file.Name())
+		if exists, err := libbuildpack.FileExists(target); err != nil {
+			return err
+		} else if !exists {
+			if err := libbuildpack.CopyFile(source, target); err != nil {
+				return err
+			}
+		}
+	}
+
+	files, err = ioutil.ReadDir(filepath.Join(f.Stager.DepDir(), "bin"))
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		target := filepath.Join(binDir, file.Name())
+		if exists, err := libbuildpack.FileExists(target); err != nil {
+			return err
+		} else if !exists {
+			contents := fmt.Sprintf("#!/bin/bash\nexec $DEPS_DIR/%s/bin/%s \"$@\"\n", f.Stager.DepsIdx(), file.Name())
+			if err := ioutil.WriteFile(target, []byte(contents), 0755); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
