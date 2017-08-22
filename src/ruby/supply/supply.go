@@ -2,6 +2,7 @@ package supply
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -64,8 +65,8 @@ type Supplier struct {
 func Run(s *Supplier) error {
 	s.Log.BeginStep("Supplying Ruby")
 
-	if os.Getenv("BP_DEBUG") != "" {
-
+	if checksum, err := s.CalcChecksum(); err == nil {
+		s.Log.Debug("BuildDir Checksum Before Supply: %s", checksum)
 	}
 
 	if err := s.Cache.Restore(); err != nil {
@@ -134,9 +135,17 @@ func Run(s *Supplier) error {
 		}
 	}
 
+	if checksum, err := s.CalcChecksum(); err == nil {
+		s.Log.Debug("BuildDir Checksum Before InstallGems: %s", checksum)
+	}
+
 	if err := s.InstallGems(); err != nil {
 		s.Log.Error("Unable to install gems: %s", err.Error())
 		return err
+	}
+
+	if checksum, err := s.CalcChecksum(); err == nil {
+		s.Log.Debug("BuildDir Checksum After InstallGems: %s", checksum)
 	}
 
 	if err := s.WriteProfileD(engine); err != nil {
@@ -153,6 +162,10 @@ func Run(s *Supplier) error {
 	if err := s.Stager.SetStagingEnvironment(); err != nil {
 		s.Log.Error("Unable to setup environment variables: %s", err.Error())
 		return err
+	}
+
+	if checksum, err := s.CalcChecksum(); err == nil {
+		s.Log.Debug("BuildDir Checksum After Supply: %s", checksum)
 	}
 
 	return nil
@@ -450,6 +463,37 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 	}
 
 	return s.Stager.WriteProfileD("ruby.sh", scriptContents)
+}
+
+func (s *Supplier) CalcChecksum() (string, error) {
+	h := md5.New()
+	basepath := s.Stager.BuildDir()
+	err := filepath.Walk(basepath, func(path string, info os.FileInfo, err error) error {
+		if info.Mode().IsRegular() {
+			relpath, err := filepath.Rel(basepath, path)
+			if strings.HasPrefix(relpath, ".cloudfoundry/") {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if _, err := io.WriteString(h, relpath); err != nil {
+				return err
+			}
+			if f, err := os.Open(path); err != nil {
+				return err
+			} else {
+				if _, err := io.Copy(h, f); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 func (s *Supplier) warnWindowsGemfile() {

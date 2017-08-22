@@ -15,9 +15,10 @@ var _ = Describe("app using system yaml library", func() {
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "sinatra"))
+		app.SetEnv("BP_DEBUG", "1")
 	})
 
-	It("displays metasyntactic variables as yaml", func() {
+	FIt("displays metasyntactic variables as yaml", func() {
 		PushAppAndConfirm(app)
 		Expect(app.GetBody("/yaml")).To(ContainSubstring(`---
 foo:
@@ -25,5 +26,9 @@ foo:
 - baz
 - quux
 `))
+
+		// Make sure supply does not change BuildDir
+		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum Before Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
+		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum After Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
 	})
 })

@@ -22,8 +22,8 @@ var _ = Describe("App with windows Gemfile", func() {
 		PushAppAndConfirm(app)
 		Expect(app.Stdout.String()).To(ContainSubstring("Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings."))
 
-		// TODO example for making sure supply does not change BuildDir
-		// Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum Before Supply: 5a1298ab0ca3c11678b104bc98d8c730"))
-		// Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum After Supply: 5a1298ab0ca3c11678b104bc98d8c730"))
+		// Make sure supply does not change BuildDir
+		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum Before Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
+		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum After Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
 	})
 })

@@ -82,6 +82,29 @@ var _ = Describe("Supply", func() {
 	PIt("InstallNode", func() {})
 	PIt("InstallRuby", func() {})
 
+	Describe("CalcChecksum", func() {
+		BeforeEach(func() {
+			Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\r\ngem \"rack\"\r\n"), 0644)).To(Succeed())
+			Expect(ioutil.WriteFile(filepath.Join(buildDir, "other"), []byte("other"), 0644)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(buildDir, "dir"), 0755)).To(Succeed())
+			Expect(ioutil.WriteFile(filepath.Join(buildDir, "dir", "other"), []byte("other"), 0644)).To(Succeed())
+		})
+		It("Returns an MD5 of the full contents", func() {
+			Expect(supplier.CalcChecksum()).To(Equal("d8be25466f8d12112d354e1a4add36a3"))
+		})
+
+		Context(".cloudfoundry directory", func() {
+			BeforeEach(func() {
+				Expect(os.MkdirAll(filepath.Join(buildDir, ".cloudfoundry", "dir"), 0755)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, ".cloudfoundry", "other"), []byte("other"), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, ".cloudfoundry", "dir", "other"), []byte("other"), 0644)).To(Succeed())
+			})
+			It("excludes .cloudfoundry directory", func() {
+				Expect(supplier.CalcChecksum()).To(Equal("d8be25466f8d12112d354e1a4add36a3"))
+			})
+		})
+	})
+
 	Describe("InstallGems", func() {
 		const windowsWarning = "**WARNING** Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings."
 
