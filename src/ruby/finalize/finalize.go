@@ -246,35 +246,44 @@ func (f *Finalizer) CopyToAppBin() error {
 	f.Log.BeginStep("Copy binaries to app/bin directory")
 
 	binDir := filepath.Join(f.Stager.BuildDir(), "bin")
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return fmt.Errorf("Could not create /app/bin directory: %v", err)
+	}
 
 	files, err := ioutil.ReadDir(filepath.Join(f.Stager.DepDir(), "binstubs"))
 	if err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("Could not read dep/binstubs directory: %v", err)
+		}
+		files = []os.FileInfo{}
 	}
 	for _, file := range files {
 		source := filepath.Join(f.Stager.DepDir(), "binstubs", file.Name())
 		target := filepath.Join(binDir, file.Name())
 		if exists, err := libbuildpack.FileExists(target); err != nil {
-			return err
+			return fmt.Errorf("Checking existence: %v", err)
 		} else if !exists {
 			if err := libbuildpack.CopyFile(source, target); err != nil {
-				return err
+				return fmt.Errorf("CopyFile: %v", err)
 			}
 		}
 	}
 
 	files, err = ioutil.ReadDir(filepath.Join(f.Stager.DepDir(), "bin"))
 	if err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("Could not read dep/bin directory: %v", err)
+		}
+		files = []os.FileInfo{}
 	}
 	for _, file := range files {
 		target := filepath.Join(binDir, file.Name())
 		if exists, err := libbuildpack.FileExists(target); err != nil {
-			return err
+			return fmt.Errorf("Checking existence: %v", err)
 		} else if !exists {
 			contents := fmt.Sprintf("#!/bin/bash\nexec $DEPS_DIR/%s/bin/%s \"$@\"\n", f.Stager.DepsIdx(), file.Name())
 			if err := ioutil.WriteFile(target, []byte(contents), 0755); err != nil {
-				return err
+				return fmt.Errorf("WriteFile: %v", err)
 			}
 		}
 	}

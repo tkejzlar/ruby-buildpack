@@ -324,5 +324,16 @@ var _ = Describe("Finalize", func() {
 				Expect(ioutil.ReadFile(filepath.Join(buildDir, "bin", "rake"))).To(ContainSubstring(`exec $DEPS_DIR/%s/bin/rake "$@"`, depsIdx))
 			})
 		})
+
+		Context("binstubs does not exist", func() {
+			BeforeEach(func() {
+				Expect(os.RemoveAll(filepath.Join(depsDir, depsIdx, "binstubs"))).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(depsDir, depsIdx, "bin", "rake"), []byte("dep/bin"), 0755)).To(Succeed())
+			})
+			It("creates a shim for dep/bin", func() {
+				Expect(finalizer.CopyToAppBin()).To(Succeed())
+				Expect(ioutil.ReadFile(filepath.Join(buildDir, "bin", "rake"))).To(ContainSubstring(`exec $DEPS_DIR/%s/bin/rake "$@"`, depsIdx))
+			})
+		})
 	})
 })

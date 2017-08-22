@@ -35,10 +35,10 @@ var _ = Describe("Rails 4 App", func() {
 		It("app has dependencies", func() {
 			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
 			PushAppAndConfirm(app)
-			Expect(app.Stdout.String()).To(MatchRegexp("Downloaded.*node-4\\."))
+			Expect(app.Stdout.String()).To(ContainSubstring("Installing node 4."))
+			Expect(app.Stdout.String()).To(ContainSubstring("Download [https://"))
 
 			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-			Expect(app.Stdout.String()).To(ContainSubstring("Downloaded [https://"))
 		})
 
 		Context("app has non vendored dependencies", func() {
