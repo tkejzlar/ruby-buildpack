@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/cloudfoundry/libbuildpack/cutlass"
 
@@ -11,13 +12,7 @@ import (
 
 var _ = Describe("CF Ruby Buildpack", func() {
 	var app *cutlass.App
-
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "specified_ruby_version"))
@@ -29,16 +24,18 @@ var _ = Describe("CF Ruby Buildpack", func() {
 		By("uses the specified ruby version", func() {
 			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby 2.2.7"))
 		})
-	})
 
-	PIt("running a task", func() {
-		// before { skip_if_no_run_task_support_on_targeted_cf }
+		By("running a task", func() {
+			if !ApiHasTask() {
+				Skip("Running against CF without run task support")
+			}
 
-		// it 'can find the specifed ruby in the container' do
-		//   expect(@app).to be_running
+			By("can find the specifed ruby in the container", func() {
+				_, err := app.RunTask(`echo "RUNNING A TASK: $(ruby --version)"`)
+				Expect(err).ToNot(HaveOccurred())
 
-		//   Open3.capture2e('cf','run-task', 'specified_ruby_version', 'echo "RUNNING A TASK: $(ruby --version)"')[1].success? or raise 'Could not create run task'
-		//   expect(@app).to have_logged(/RUNNING A TASK: ruby 2\.2\.7/)
-		// end
+				Eventually(func() string { return app.Stdout.String() }, 10*time.Second).Should(ContainSubstring("RUNNING A TASK: ruby 2.2.7"))
+			})
+		})
 	})
 })

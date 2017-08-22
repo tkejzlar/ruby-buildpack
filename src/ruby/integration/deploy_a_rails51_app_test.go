@@ -20,17 +20,15 @@ var _ = Describe("Rails 5.1 (Webpack/Yarn) App", func() {
 		app = nil
 	})
 
-	Context("in an online environment", func() {
-		BeforeEach(func() {
-			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails51"))
-		})
+	BeforeEach(func() {
+		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails51"))
+	})
 
-		It("", func() {
-			PushAppAndConfirm(app)
-			Expect(app.Stdout.String()).To(ContainSubstring("Installing node 6."))
+	It("Installs node6 and runs", func() {
+		PushAppAndConfirm(app)
+		Expect(app.Stdout.String()).To(ContainSubstring("Installing node 6."))
 
-			Expect(app.GetBody("/")).To(ContainSubstring("Hello World"))
-			Eventually(func() string { return app.Stdout.String() }, 10*time.Second).Should(ContainSubstring(`Started GET "/" for`))
-		})
+		Expect(app.GetBody("/")).To(ContainSubstring("Hello World"))
+		Eventually(func() string { return app.Stdout.String() }, 10*time.Second).Should(ContainSubstring(`Started GET "/" for`))
 	})
 })

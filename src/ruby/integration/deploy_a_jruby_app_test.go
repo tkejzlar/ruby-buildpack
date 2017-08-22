@@ -12,12 +12,7 @@ import (
 var _ = Describe("JRuby App", func() {
 	var app *cutlass.App
 
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "sinatra_jruby"))
@@ -39,12 +34,8 @@ var _ = Describe("JRuby App", func() {
 	})
 
 	Context("a cached buildpack", func() {
-		BeforeEach(func() {
-			if !cutlass.Cached {
-				Skip("cached tests")
-			}
-		})
-		PIt("Assert no internet traffic", func() {})
-		// AssertNoInternetTraffic("rails3_mri_200")
+		BeforeEach(SkipUnlessCached)
+
+		AssertNoInternetTraffic("sinatra_jruby")
 	})
 })

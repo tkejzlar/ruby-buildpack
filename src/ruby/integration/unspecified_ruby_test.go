@@ -3,6 +3,7 @@ package integration_test
 import (
 	"path/filepath"
 
+	"github.com/cloudfoundry/libbuildpack"
 	"github.com/cloudfoundry/libbuildpack/cutlass"
 
 	. "github.com/onsi/ginkgo"
@@ -11,29 +12,27 @@ import (
 
 var _ = Describe("CF Ruby Buildpack", func() {
 	var app *cutlass.App
-
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "unspecified_ruby"))
 		app.SetEnv("BP_DEBUG", "1")
 	})
 
-	It("", func() {
+	defaultVersion := func(name string) string {
+		m := &libbuildpack.Manifest{}
+		err := (&libbuildpack.YAML{}).Load(filepath.Join(bpDir, "manifest.yml"), m)
+		Expect(err).ToNot(HaveOccurred())
+		dep, err := m.DefaultVersion(name)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(dep.Version).ToNot(Equal(""))
+		return dep.Version
+	}
+
+	It("uses the default ruby version when ruby version is not specified", func() {
 		PushAppAndConfirm(app)
+		defaultRubyVersion := defaultVersion("ruby")
 
-		By("uses the default ruby version when ruby version is not specified", func() {
-			// TODO pull version from manifest.yml
-			Expect(app.Stdout.String()).To(ContainSubstring("Using Ruby version: ruby-2.4.1"))
-		})
-
-		By("pulls the default version from the manifest for ruby", func() {
-			Expect(app.Stdout.String()).To(ContainSubstring("DEBUG: default_version_for ruby is"))
-		})
+		Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby %s", defaultRubyVersion))
 	})
 })

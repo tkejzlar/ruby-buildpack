@@ -11,71 +11,47 @@ import (
 
 var _ = Describe("Rails 4 App", func() {
 	var app *cutlass.App
-
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	Context("in an offline environment", func() {
 		BeforeEach(func() {
-			if !cutlass.Cached {
-				Skip("cached tests")
-			}
-
-			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
+			SkipUnlessCached()
 		})
 
 		It("", func() {
+			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
 			PushAppAndConfirm(app)
 
 			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-
-			Expect(app.Stdout.String()).To(ContainSubstring("Downloaded [file://"))
+			Expect(app.Stdout.String()).To(ContainSubstring("Copy [/"))
 		})
 
-		PIt("Assert no internet traffic", func() {
-			// expect(app).not_to have_internet_traffic
-		})
+		AssertNoInternetTraffic("rails4")
 	})
 
 	Context("in an online environment", func() {
-		BeforeEach(func() {
-			if cutlass.Cached {
-				Skip("uncached tests")
-			}
-		})
-		Context("app has dependencies", func() {
-			BeforeEach(func() {
-				app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
-			})
+		BeforeEach(SkipUnlessUncached)
 
-			It("", func() {
-				PushAppAndConfirm(app)
-				Expect(app.Stdout.String()).To(MatchRegexp("Downloaded.*node-4\\."))
+		It("app has dependencies", func() {
+			app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4"))
+			PushAppAndConfirm(app)
+			Expect(app.Stdout.String()).To(MatchRegexp("Downloaded.*node-4\\."))
 
-				Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-				Expect(app.Stdout.String()).To(ContainSubstring("Downloaded [https://"))
-			})
+			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
+			Expect(app.Stdout.String()).To(ContainSubstring("Downloaded [https://"))
 		})
 
 		Context("app has non vendored dependencies", func() {
-			BeforeEach(func() {
-				app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4_not_vendored"))
-			})
-
 			It("", func() {
-				// TODO next line
-				// expect(Dir.exists?("cf_spec/fixtures/#{app_name}/vendor")).to eql(false)
+				app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "rails4_not_vendored"))
+				Expect(filepath.Join(app.Path, "vendor")).ToNot(BeADirectory())
+
 				PushAppAndConfirm(app)
 
 				Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
 			})
-			PIt("uses a proxy during staging if present", func() {
-				// expect(app).to use_proxy_during_staging
-			})
+
+			AssertUsesProxyDuringStagingIfPresent("rails4_not_vendored")
 		})
 	})
 })

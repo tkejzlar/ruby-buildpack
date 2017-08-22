@@ -93,13 +93,28 @@ func ApiHasTask() bool {
 	return apiHasTask(apiVersion)
 }
 
+func SkipUnlessUncached() {
+	if cutlass.Cached {
+		Skip("Running cached tests")
+	}
+}
+
+func SkipUnlessCached() {
+	if !cutlass.Cached {
+		Skip("Running uncached tests")
+	}
+}
+
+func DestroyApp(app *cutlass.App) *cutlass.App {
+	if app != nil {
+		app.Destroy()
+	}
+	return nil
+}
+
 func AssertUsesProxyDuringStagingIfPresent(fixtureName string) {
 	Context("with an uncached buildpack", func() {
-		BeforeEach(func() {
-			if cutlass.Cached {
-				Skip("Running cached tests")
-			}
-		})
+		BeforeEach(SkipUnlessUncached)
 
 		It("uses a proxy during staging if present", func() {
 			proxy, err := cutlass.NewProxy()
@@ -114,7 +129,7 @@ func AssertUsesProxyDuringStagingIfPresent(fixtureName string) {
 
 			traffic, err := cutlass.InternetTraffic(
 				bpDir,
-				filepath.Join("fixtures", fixtureName),
+				filepath.Join("cf_spec", "fixtures", fixtureName),
 				bpFile,
 				[]string{"HTTP_PROXY=" + proxy.URL, "HTTPS_PROXY=" + proxy.URL},
 			)
@@ -132,9 +147,7 @@ func AssertUsesProxyDuringStagingIfPresent(fixtureName string) {
 
 func AssertNoInternetTraffic(fixtureName string) {
 	It("has no traffic", func() {
-		if !cutlass.Cached {
-			Skip("Running uncached tests")
-		}
+		SkipUnlessCached()
 
 		bpFile := filepath.Join(bpDir, buildpackVersion+"tmp")
 		cmd := exec.Command("cp", packagedBuildpack.File, bpFile)
@@ -144,7 +157,7 @@ func AssertNoInternetTraffic(fixtureName string) {
 
 		traffic, err := cutlass.InternetTraffic(
 			bpDir,
-			filepath.Join("fixtures", fixtureName),
+			filepath.Join("cf_spec", "fixtures", fixtureName),
 			bpFile,
 			[]string{},
 		)

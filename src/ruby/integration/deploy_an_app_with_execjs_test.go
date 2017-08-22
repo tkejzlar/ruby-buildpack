@@ -11,13 +11,7 @@ import (
 
 var _ = Describe("requiring execjs", func() {
 	var app *cutlass.App
-
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "with_execjs"))
@@ -26,7 +20,7 @@ var _ = Describe("requiring execjs", func() {
 
 	It("", func() {
 		PushAppAndConfirm(app)
-		Expect(app.Stdout.String()).To(MatchRegexp("Downloaded.*node-4\\."))
+		Expect(app.Stdout.String()).To(ContainSubstring("Installing node 4."))
 
 		Expect(app.GetBody("/")).To(ContainSubstring("Successfully required execjs"))
 		Expect(app.Stdout.String()).ToNot(ContainSubstring("ExecJS::RuntimeUnavailable"))

@@ -12,13 +12,7 @@ import (
 
 var _ = Describe("CF Ruby Buildpack", func() {
 	var app *cutlass.App
-
-	AfterEach(func() {
-		if app != nil {
-			app.Destroy()
-		}
-		app = nil
-	})
+	AfterEach(func() { app = DestroyApp(app) })
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "cf_spec", "fixtures", "unsupported_ruby"))
