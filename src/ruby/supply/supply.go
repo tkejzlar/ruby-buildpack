@@ -397,7 +397,7 @@ func (s *Supplier) InstallGems() error {
 
 	s.Log.Info("Cleaning up the bundler cache.")
 
-	cmd = exec.Command("bundle", "clean")
+	cmd = exec.Command("bundle", "clean", "--force")
 	cmd.Dir = s.Stager.BuildDir()
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
