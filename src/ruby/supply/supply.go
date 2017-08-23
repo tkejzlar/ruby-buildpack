@@ -65,6 +65,8 @@ type Supplier struct {
 func Run(s *Supplier) error {
 	s.Log.BeginStep("Supplying Ruby")
 
+	s.Command.Execute(s.Stager.BuildDir(), os.Stdout, os.Stderr, "touch", "/tmp/checkpoint")
+
 	if checksum, err := s.CalcChecksum(); err == nil {
 		s.Log.Debug("BuildDir Checksum Before Supply: %s", checksum)
 	}
@@ -167,6 +169,8 @@ func Run(s *Supplier) error {
 	if checksum, err := s.CalcChecksum(); err == nil {
 		s.Log.Debug("BuildDir Checksum After Supply: %s", checksum)
 	}
+
+	s.Command.Execute(s.Stager.BuildDir(), os.Stdout, os.Stderr, "find", ".", "-newer", "/tmp/checkpoint")
 
 	return nil
 }
