@@ -378,6 +378,7 @@ func (s *Supplier) InstallGems() error {
 		s.Log.Error(string(output))
 		return fmt.Errorf("Could not copy build dir to temp: %v", err)
 	}
+	tempDir = filepath.Join(tempDir, filepath.Base(s.Stager.BuildDir()))
 
 	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
 		return err
