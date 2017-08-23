@@ -18,6 +18,7 @@ type Cache struct {
 	buildDir string
 	cacheDir string
 	depDir   string
+	names    []string
 	metadata Metadata
 	log      *libbuildpack.Logger
 	yaml     YAML
@@ -39,6 +40,7 @@ func New(stager Stager, log *libbuildpack.Logger, yaml YAML) (*Cache, error) {
 		buildDir: stager.BuildDir(),
 		cacheDir: stager.CacheDir(),
 		depDir:   filepath.Join(stager.DepDir()),
+		names:    []string{"vendor_bundle", "node_modules"},
 		metadata: Metadata{},
 		log:      log,
 		yaml:     yaml,
@@ -59,8 +61,16 @@ func (c *Cache) Metadata() *Metadata {
 
 func (c *Cache) Restore() error {
 	if c.metadata.Stack == os.Getenv("CF_STACK") {
-		c.log.BeginStep("Restoring vendor_bundle from cache")
-		return os.Rename(filepath.Join(c.cacheDir, "vendor_bundle"), filepath.Join(c.depDir, "vendor_bundle"))
+		for _, name := range c.names {
+			if exists, err := libbuildpack.FileExists(filepath.Join(c.cacheDir, name)); err != nil {
+				return err
+			} else if exists {
+				c.log.BeginStep("Restoring %s from cache", name)
+				if err := os.Rename(filepath.Join(c.cacheDir, name), filepath.Join(c.depDir, name)); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	if c.metadata.Stack != "" {
 		c.log.BeginStep("Skipping restoring vendor_bundle from cache, stack changed from %s to %s", c.metadata.Stack, os.Getenv("CF_STACK"))
@@ -69,14 +79,20 @@ func (c *Cache) Restore() error {
 }
 
 func (c *Cache) Save() error {
-	c.log.BeginStep("Saving vendor_bundle to cache")
-
-	cmd := exec.Command("cp", "-al", filepath.Join(c.depDir, "vendor_bundle"), filepath.Join(c.cacheDir, "vendor_bundle"))
-	if output, err := cmd.CombinedOutput(); err != nil {
-		c.log.Error(string(output))
-		return fmt.Errorf("Could not copy vendor_bundle: %v", err)
+	for _, name := range c.names {
+		if exists, err := libbuildpack.FileExists(filepath.Join(c.depDir, name)); err != nil {
+			return err
+		} else if exists {
+			c.log.BeginStep("Saving %s to cache", name)
+			cmd := exec.Command("cp", "-al", filepath.Join(c.depDir, name), filepath.Join(c.cacheDir, name))
+			if output, err := cmd.CombinedOutput(); err != nil {
+				c.log.Error(string(output))
+				return fmt.Errorf("Could not copy %s: %v", name, err)
+			}
+		}
 	}
 
+	c.metadata.Stack = os.Getenv("CF_STACK")
 	if err := c.yaml.Write(c.metadata_yml(), c.metadata); err != nil {
 		return err
 	}

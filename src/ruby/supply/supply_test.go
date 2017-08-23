@@ -218,9 +218,9 @@ var _ = Describe("Supply", func() {
 
 	Describe("CreateDefaultEnv", func() {
 		AfterEach(func() {
-			os.Unsetenv("RAILS_ENV")
-			os.Unsetenv("RACK_ENV")
-			os.Unsetenv("RAILS_GROUPS")
+			_ = os.Unsetenv("RAILS_ENV")
+			_ = os.Unsetenv("RACK_ENV")
+			_ = os.Unsetenv("RAILS_GROUPS")
 		})
 
 		It("Sets RAILS_ENV", func() {
@@ -255,7 +255,7 @@ var _ = Describe("Supply", func() {
 		})
 
 		Context("RAILS_ENV is set", func() {
-			BeforeEach(func() { os.Setenv("RAILS_ENV", "test") })
+			BeforeEach(func() { _ = os.Setenv("RAILS_ENV", "test") })
 
 			It("does not set RAILS_ENV", func() {
 				Expect(supplier.CreateDefaultEnv()).To(Succeed())
@@ -268,7 +268,7 @@ var _ = Describe("Supply", func() {
 		})
 
 		Context("RAILS_GROUPS is set", func() {
-			BeforeEach(func() { os.Setenv("RAILS_GROUPS", "test") })
+			BeforeEach(func() { _ = os.Setenv("RAILS_GROUPS", "test") })
 
 			It("does not set RAILS_ENV", func() {
 				Expect(supplier.CreateDefaultEnv()).To(Succeed())
@@ -281,7 +281,7 @@ var _ = Describe("Supply", func() {
 		})
 
 		Context("RACK_ENV is set", func() {
-			BeforeEach(func() { os.Setenv("RACK_ENV", "test") })
+			BeforeEach(func() { _ = os.Setenv("RACK_ENV", "test") })
 
 			It("does not set RACK_ENV", func() {
 				Expect(supplier.CreateDefaultEnv()).To(Succeed())

@@ -65,7 +65,7 @@ type Supplier struct {
 func Run(s *Supplier) error {
 	s.Log.BeginStep("Supplying Ruby")
 
-	s.Command.Execute(s.Stager.BuildDir(), ioutil.Discard, ioutil.Discard, "touch", "/tmp/checkpoint")
+	_ = s.Command.Execute(s.Stager.BuildDir(), ioutil.Discard, ioutil.Discard, "touch", "/tmp/checkpoint")
 
 	if checksum, err := s.CalcChecksum(); err == nil {
 		s.Log.Debug("BuildDir Checksum Before Supply: %s", checksum)
@@ -194,18 +194,14 @@ func (s *Supplier) InstallYarn() error {
 }
 
 func (s *Supplier) InstallYarnDependencies() error {
-	exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "yarn.lock"))
-	if err != nil {
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "yarn.lock")); err != nil {
 		return err
-	}
-	if !exists {
+	} else if !exists {
 		return nil
 	}
-	exists, err = libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "bin/yarn"))
-	if err != nil {
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "bin/yarn")); err != nil {
 		return err
-	}
-	if !exists {
+	} else if !exists {
 		return nil
 	}
 
@@ -223,12 +219,13 @@ func (s *Supplier) InstallBundler() error {
 	if err := s.Manifest.InstallOnlyVersion("bundler", filepath.Join(s.Stager.DepDir(), "bundler")); err != nil {
 		return err
 	}
-	os.Setenv("GEM_HOME", filepath.Join(s.Stager.DepDir(), "gem_home"))
+	_ = os.Setenv("GEM_HOME", filepath.Join(s.Stager.DepDir(), "gem_home"))
 	if err := s.Stager.WriteEnvFile("GEM_HOME", filepath.Join(s.Stager.DepDir(), "gem_home")); err != nil {
 		return err
 	}
-	gemPath := strings.Join([]string{filepath.Join(s.Stager.DepDir(), "gem_home"), filepath.Join(s.Stager.DepDir(), "bundler")}, ":")
-	os.Setenv("GEM_PATH", gemPath)
+	// TODO use correct engine below, NOT 2.4.0
+	gemPath := strings.Join([]string{filepath.Join(s.Stager.DepDir(), "vendor_bundle/ruby/2.4.0"), filepath.Join(s.Stager.DepDir(), "gem_home"), filepath.Join(s.Stager.DepDir(), "bundler")}, ":")
+	_ = os.Setenv("GEM_PATH", gemPath)
 	if err := s.Stager.WriteEnvFile("GEM_PATH", gemPath); err != nil {
 		return err
 	}
@@ -400,11 +397,22 @@ func (s *Supplier) InstallGems() error {
 		without = "development:test"
 	}
 
+	// TODO do properly ???
+	_ = os.Setenv("BUNDLE_PATH", filepath.Join(s.Stager.DepDir(), "vendor_bundle", "ruby", "2.4.0")) // TODO engine properly
+	_ = os.Setenv("BUNDLE_BIN", filepath.Join(s.Stager.DepDir(), "binstubs"))
+	_ = os.Setenv("BUNDLE_WITHOUT", without)
+	_ = os.Setenv("BUNDLE_CONFIG", filepath.Join(s.Stager.DepDir(), "bundle_config"))
+	_ = os.Setenv("BUNDLE_DISABLE_SHARED_GEMS", "true")
+	// _ = os.Setenv("BUNDLE_IGNORE_CONFIG", "1")
+
 	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
 	if exists, err := libbuildpack.FileExists(gemfileLock); err != nil {
 		return err
 	} else if exists {
 		args = append(args, "--deployment")
+
+		// TODO do properly ???
+		_ = os.Setenv("BUNDLE_FROZEN", "1")
 	}
 
 	version := s.Manifest.AllDependencyVersions("bundler")
@@ -434,6 +442,34 @@ func (s *Supplier) InstallGems() error {
 		return err
 	}
 
+	// Copy binstubs to bin
+	files, err := ioutil.ReadDir(filepath.Join(s.Stager.DepDir(), "binstubs"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("Could not read dep/binstubs directory: %v", err)
+		}
+	} else {
+		for _, file := range files {
+			source := filepath.Join(s.Stager.DepDir(), "binstubs", file.Name())
+			target := filepath.Join(s.Stager.DepDir(), "bin", file.Name())
+			if exists, err := libbuildpack.FileExists(target); err != nil {
+				return fmt.Errorf("Checking existence: %v", err)
+			} else if !exists {
+				if err := libbuildpack.CopyFile(source, target); err != nil {
+					return fmt.Errorf("CopyFile: %v", err)
+				}
+			}
+		}
+	}
+
+	// Save .bundle/config to global config
+	if exists, err := libbuildpack.FileExists(filepath.Join(tempDir, ".bundle", "config")); err == nil && exists {
+		s.Log.Debug("SaveGemfileLock; %s -> %s", filepath.Join(tempDir, ".bundle", "config"), os.Getenv("BUNDLE_CONFIG"))
+		if err := os.Rename(filepath.Join(tempDir, ".bundle", "config"), os.Getenv("BUNDLE_CONFIG")); err != nil {
+			return err
+		}
+	}
+
 	// Save Gemfile.lock for finalize
 	gemfileLockTarget := filepath.Join(s.Stager.DepDir(), "Gemfile.lock")
 	if exists, err := libbuildpack.FileExists(gemfileLock); err == nil && exists {
@@ -451,11 +487,12 @@ func (s *Supplier) CreateDefaultEnv() error {
 		"RAILS_ENV":    "production",
 		"RACK_ENV":     "production",
 		"RAILS_GROUPS": "assets",
+		"BUNDLE_PATH":  filepath.Join(s.Stager.DepDir(), "vendor_bundle"),
 	}
 
 	for envVar, envDefault := range environmentDefaults {
 		if os.Getenv(envVar) == "" {
-			os.Setenv(envVar, envDefault)
+			_ = os.Setenv(envVar, envDefault)
 			if err := s.Stager.WriteEnvFile(envVar, envDefault); err != nil {
 				return err
 			}
@@ -483,10 +520,11 @@ export RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-enabled}
 
 export GEM_HOME=${GEM_HOME:-$DEPS_DIR/%s/gem_home}
 export GEM_PATH=${GEM_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
+export BUNDLE_PATH=${BUNDLE_PATH:-$DEPS_DIR/%s/vendor_bundle}
 
-## Change to current DEPS_DIR 
+## Change to current DEPS_DIR
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
-		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx)
+		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, depsIdx)
 
 	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
 	if err != nil {
@@ -495,7 +533,12 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 	if hasRails41 {
 		metadata := s.Cache.Metadata()
 		if metadata.SecretKeyBase == "" {
-			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
+
+			env, err := s.Command.Output(s.Stager.BuildDir(), "printenv")
+			fmt.Println(env, err)
+
+			// metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
+			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "rake", "secret")
 			if err != nil {
 				return fmt.Errorf("Running 'rake secret'", err)
 			}
