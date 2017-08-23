@@ -39,7 +39,7 @@ var _ = Describe("Ruby", func() {
 				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile.lock"), []byte(windowsGemfileLockFixture), 0644)).To(Succeed())
 			})
 
-			It("returns ruby", func() {
+			It("returns true", func() {
 				v := versions.New(tmpDir, manifest)
 				Expect(v.HasWindowsGemfileLock()).To(BeTrue())
 			})
@@ -51,7 +51,14 @@ var _ = Describe("Ruby", func() {
 				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile.lock"), []byte(linuxGemfileLockFixture), 0644)).To(Succeed())
 			})
 
-			It("returns ruby", func() {
+			It("returns false", func() {
+				v := versions.New(tmpDir, manifest)
+				Expect(v.HasWindowsGemfileLock()).To(BeFalse())
+			})
+		})
+
+		Context("Gemfile.lock does not exist", func() {
+			It("returns false", func() {
 				v := versions.New(tmpDir, manifest)
 				Expect(v.HasWindowsGemfileLock()).To(BeFalse())
 			})

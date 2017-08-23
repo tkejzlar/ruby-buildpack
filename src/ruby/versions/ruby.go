@@ -162,6 +162,7 @@ func (v *Versions) GemMajorVersion(gem string) (int, error) {
 
 func (v *Versions) HasWindowsGemfileLock() (bool, error) {
 	code := `
+	  return false if !File.exists?(input["gemfilelock"])
 		parsed = Bundler::LockfileParser.new(File.read(input["gemfilelock"]))
 		!parsed.platforms.detect do |platform|
       /mingw|mswin/.match(platform.os) if platform.is_a?(Gem::Platform)

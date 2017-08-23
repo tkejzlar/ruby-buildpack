@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"ruby/cache"
 	"ruby/supply"
@@ -112,7 +113,7 @@ var _ = Describe("Supply", func() {
 
 		Context("Windows Gemfile", func() {
 			BeforeEach(func() {
-				mockVersions.EXPECT().HasWindowsGemfileLock().Return(true, nil)
+				mockVersions.EXPECT().HasWindowsGemfileLock().Return(false, nil)
 				mockVersions.EXPECT().Gemfile().AnyTimes().Return(filepath.Join(buildDir, "Gemfile"))
 				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes()
 				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
@@ -132,13 +133,50 @@ var _ = Describe("Supply", func() {
 				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
 				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\ngem \"rack\"\n"), 0644)).To(Succeed())
 			})
-			It("Warns the user", func() {
+			It("Does not warn the user", func() {
 				Expect(supplier.InstallGems()).To(Succeed())
 				Expect(buffer.String()).ToNot(ContainSubstring(windowsWarning))
 			})
 		})
 
-		PIt("Windows Gemfile.lock", func() {})
+		Context("Windows Gemfile.lock", func() {
+			const gemfileLock = "GEM\n  remote: https://rubygems.org/\n  specs:\n    rack (1.5.2)\n\nPLATFORMS\n  x64-mingw32\n\nDEPENDENCIES\n  rack\n"
+			const newGemfileLock = "new lockfile"
+			BeforeEach(func() {
+				mockVersions.EXPECT().HasWindowsGemfileLock().Return(true, nil)
+				mockVersions.EXPECT().Gemfile().AnyTimes().Return(filepath.Join(buildDir, "Gemfile"))
+				mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.2.3"})
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile"), []byte("source \"https://rubygems.org\"\r\ngem \"rack\"\r\n"), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(buildDir, "Gemfile.lock"), []byte(gemfileLock), 0644)).To(Succeed())
+			})
+
+			It("runs bundler without the Gemfile.lock and copies the Gemfile.lock it creates to the dep directory", func() {
+				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes().Do(func(cmd *exec.Cmd) {
+					if cmd.Args[1] == "install" {
+						Expect(cmd.Args).ToNot(ContainElement("--deployment"))
+						Expect(filepath.Join(cmd.Dir, "Gemfile")).To(BeAnExistingFile())
+						Expect(filepath.Join(cmd.Dir, "Gemfile.lock")).ToNot(BeAnExistingFile())
+						Expect(ioutil.WriteFile(filepath.Join(cmd.Dir, "Gemfile.lock"), []byte(newGemfileLock), 0644)).To(Succeed())
+					}
+				})
+				Expect(supplier.InstallGems()).To(Succeed())
+
+				Expect(ioutil.ReadFile(filepath.Join(buildDir, "Gemfile.lock"))).To(ContainSubstring(gemfileLock))
+				Expect(ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "Gemfile.lock"))).To(ContainSubstring(newGemfileLock))
+			})
+
+			It("runs bundler in a copy so it does not change the build directory", func() {
+				installCalled := false
+				mockCommand.EXPECT().Run(gomock.Any()).AnyTimes().Do(func(cmd *exec.Cmd) {
+					if cmd.Args[1] == "install" {
+						Expect(cmd.Dir).ToNot(Equal(buildDir))
+						installCalled = true
+					}
+				})
+				Expect(supplier.InstallGems()).To(Succeed())
+				Expect(installCalled).To(BeTrue())
+			})
+		})
 	})
 
 	Describe("InstallJVM", func() {

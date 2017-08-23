@@ -18,7 +18,7 @@ var _ = Describe("app using system yaml library", func() {
 		app.SetEnv("BP_DEBUG", "1")
 	})
 
-	FIt("displays metasyntactic variables as yaml", func() {
+	It("displays metasyntactic variables as yaml", func() {
 		PushAppAndConfirm(app)
 		Expect(app.GetBody("/yaml")).To(ContainSubstring(`---
 foo:
@@ -26,9 +26,5 @@ foo:
 - baz
 - quux
 `))
-
-		// Make sure supply does not change BuildDir
-		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum Before Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
-		Expect(app.Stdout.String()).To(ContainSubstring("BuildDir Checksum After Supply: 21c2ecb9b0da65101e2eec324dff6cd5"))
 	})
 })

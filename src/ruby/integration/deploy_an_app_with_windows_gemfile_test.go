@@ -18,7 +18,7 @@ var _ = Describe("App with windows Gemfile", func() {
 		app.SetEnv("BP_DEBUG", "1")
 	})
 
-	It("warned the user about Windows line endings for windows Gemfile", func() {
+	FIt("warned the user about Windows line endings for windows Gemfile", func() {
 		PushAppAndConfirm(app)
 		Expect(app.Stdout.String()).To(ContainSubstring("Windows line endings detected in Gemfile. Your app may fail to stage. Please use UNIX line endings."))
 
