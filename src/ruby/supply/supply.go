@@ -393,6 +393,7 @@ func (s *Supplier) InstallGems() error {
 
 	env := os.Environ()
 	env = append(env, "NOKOGIRI_USE_SYSTEM_LIBRARIES=true")
+	env = append(env, "BUNDLE_CONFIG=/tmp/bundle_config")
 
 	cmd := exec.Command("bundle", args...)
 	cmd.Dir = s.Stager.BuildDir()
