@@ -106,14 +106,18 @@ func (f *Finalizer) Setup() error {
 }
 
 func (f *Finalizer) RestoreGemfileLock() error {
-	if exists, err := libbuildpack.FileExists(filepath.Join(f.Stager.DepDir(), "Gemfile.lock")); err != nil {
+	source := filepath.Join(f.Stager.DepDir(), "Gemfile.lock")
+	f.Log.Debug("RestoreGemfileLock; %s", source)
+	if exists, err := libbuildpack.FileExists(source); err != nil {
 		return err
 	} else if exists {
 		gemfile := "Gemfile"
 		if os.Getenv("BUNDLE_GEMFILE") != "" {
 			gemfile = os.Getenv("BUNDLE_GEMFILE")
 		}
-		return os.Rename(filepath.Join(f.Stager.DepDir(), "Gemfile.lock"), filepath.Join(f.Stager.BuildDir(), gemfile)+".lock")
+		target := filepath.Join(f.Stager.BuildDir(), gemfile) + ".lock"
+		f.Log.Debug("RestoreGemfileLock; exists, copy to %s", target)
+		return os.Rename(source, target)
 	}
 	return nil
 }

@@ -388,7 +388,10 @@ func (s *Supplier) InstallGems() error {
 	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
 		return err
 	} else if hasFile {
-		os.Remove(gemfileLock)
+		s.Log.Debug("Remove %s", gemfileLock)
+		if err := os.Remove(gemfileLock); err != nil {
+			return err
+		}
 	}
 
 	without := os.Getenv("BUNDLE_WITHOUT")
@@ -431,8 +434,10 @@ func (s *Supplier) InstallGems() error {
 	}
 
 	// Save Gemfile.lock for finalize
-	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), ".bundle", "config")); err == nil && exists {
-		if err := os.Rename(gemfileLock, filepath.Join(s.Stager.DepDir(), "Gemfile.lock")); err != nil {
+	gemfileLockTarget := filepath.Join(s.Stager.DepDir(), "Gemfile.lock")
+	if exists, err := libbuildpack.FileExists(gemfileLock); err == nil && exists {
+		s.Log.Debug("SaveGemfileLock; %s -> %s", gemfileLock, gemfileLockTarget)
+		if err := os.Rename(gemfileLock, gemfileLockTarget); err != nil {
 			return err
 		}
 	}
