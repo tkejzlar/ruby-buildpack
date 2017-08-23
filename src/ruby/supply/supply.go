@@ -365,29 +365,35 @@ func (w *IndentedWriter) Write(p []byte) (n int, err error) {
 	return w.Write(p)
 }
 
+func (s *Supplier) copyDirToTemp(dir string) (string, error) {
+	tempDir, err := ioutil.TempDir("", "app")
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("cp", "-al", dir, tempDir)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		s.Log.Error(string(output))
+		return "", fmt.Errorf("Could not copy build dir to temp: %v", err)
+	}
+	tempDir = filepath.Join(tempDir, filepath.Base(dir))
+	return tempDir, nil
+}
+
 func (s *Supplier) InstallGems() error {
 	s.warnBundleConfig()
 	s.warnWindowsGemfile()
 
-	tempDir, err := ioutil.TempDir("", "app")
+	tempDir = s.copyDirToTemp(s.Stager.BuildDir())
+	gemfileLock, err := filepath.Rel(s.Stager.BuildDir(), s.Versions.Gemfile())
 	if err != nil {
-		return err
+		return nil
 	}
-	cmd := exec.Command("cp", "-al", s.Stager.BuildDir(), tempDir)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		s.Log.Error(string(output))
-		return fmt.Errorf("Could not copy build dir to temp: %v", err)
-	}
-	tempDir = filepath.Join(tempDir, filepath.Base(s.Stager.BuildDir()))
+	gemfileLock = filepath.Join(tempDir, gemfileLock) + ".lock"
 
 	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
 		return err
 	} else if hasFile {
-		gemfile, err := filepath.Rel(s.Stager.BuildDir(), s.Versions.Gemfile())
-		if err != nil {
-			return nil
-		}
-		os.Remove(filepath.Join(tempDir, gemfile) + ".lock")
+		os.Remove(gemfileLock)
 	}
 
 	without := os.Getenv("BUNDLE_WITHOUT")
@@ -396,7 +402,7 @@ func (s *Supplier) InstallGems() error {
 	}
 
 	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
-	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile() + ".lock"); err != nil {
+	if exists, err := libbuildpack.FileExists(gemfileLock); err != nil {
 		return err
 	} else if exists {
 		args = append(args, "--deployment")
