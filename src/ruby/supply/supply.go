@@ -395,15 +395,18 @@ func (s *Supplier) InstallGems() error {
 		return err
 	}
 
-	s.Log.Info("Cleaning up the bundler cache.")
+	return nil
 
-	args = []string{"clean", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle")}
-	cmd = exec.Command("bundle", args...)
-	cmd.Dir = s.Stager.BuildDir()
-	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
-	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
-	cmd.Env = env
-	return s.Command.Run(cmd)
+	// TODO put below back
+	// s.Log.Info("Cleaning up the bundler cache.")
+
+	// args = []string{"clean", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle")}
+	// cmd = exec.Command("bundle", args...)
+	// cmd.Dir = s.Stager.BuildDir()
+	// cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
+	// cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
+	// cmd.Env = env
+	// return s.Command.Run(cmd)
 }
 
 func (s *Supplier) CreateDefaultEnv() error {
