@@ -383,7 +383,10 @@ func (s *Supplier) InstallGems() error {
 	s.warnBundleConfig()
 	s.warnWindowsGemfile()
 
-	tempDir = s.copyDirToTemp(s.Stager.BuildDir())
+	tempDir, err := s.copyDirToTemp(s.Stager.BuildDir())
+	if err != nil {
+		return nil
+	}
 	gemfileLock, err := filepath.Rel(s.Stager.BuildDir(), s.Versions.Gemfile())
 	if err != nil {
 		return nil
@@ -415,7 +418,7 @@ func (s *Supplier) InstallGems() error {
 	env := os.Environ()
 	env = append(env, "NOKOGIRI_USE_SYSTEM_LIBRARIES=true")
 
-	cmd = exec.Command("bundle", args...)
+	cmd := exec.Command("bundle", args...)
 	cmd.Dir = tempDir
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
