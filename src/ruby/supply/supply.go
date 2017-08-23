@@ -395,26 +395,21 @@ func (s *Supplier) InstallGems() error {
 		return err
 	}
 
-	return nil
+	s.Log.Info("Cleaning up the bundler cache.")
 
-	// TODO put below back
-	// s.Log.Info("Cleaning up the bundler cache.")
-
-	// args = []string{"clean", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle")}
-	// cmd = exec.Command("bundle", args...)
-	// cmd.Dir = s.Stager.BuildDir()
-	// cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
-	// cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
-	// cmd.Env = env
-	// return s.Command.Run(cmd)
+	cmd = exec.Command("bundle", "clean")
+	cmd.Dir = s.Stager.BuildDir()
+	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
+	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
+	cmd.Env = env
+	return s.Command.Run(cmd)
 }
 
 func (s *Supplier) CreateDefaultEnv() error {
 	var environmentDefaults = map[string]string{
-		"RAILS_ENV":            "production",
-		"RACK_ENV":             "production",
-		"RAILS_GROUPS":         "assets",
-		"BUNDLE_IGNORE_CONFIG": "true",
+		"RAILS_ENV":    "production",
+		"RACK_ENV":     "production",
+		"RAILS_GROUPS": "assets",
 	}
 
 	for envVar, envDefault := range environmentDefaults {
