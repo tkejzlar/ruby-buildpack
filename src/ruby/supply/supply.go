@@ -169,7 +169,6 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	s.Cache.Metadata().Stack = os.Getenv("CF_STACK")
 	if err := s.Cache.Save(); err != nil {
 		s.Log.Error("Unable to save cache: %s", err.Error())
 		return err
@@ -185,7 +184,6 @@ func Run(s *Supplier) error {
 	}
 
 	if filesChanged, err := s.Command.Output(s.Stager.BuildDir(), "find", ".", "-newer", "/tmp/checkpoint"); err == nil && filesChanged != "" {
-
 		s.Log.Debug("Below files changed:")
 		s.Log.Debug(filesChanged)
 	}
@@ -544,8 +542,7 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 			env, err := s.Command.Output(s.Stager.BuildDir(), "printenv")
 			fmt.Println(env, err)
 
-			// metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
-			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "rake", "secret")
+			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
 			if err != nil {
 				return fmt.Errorf("Running 'rake secret'", err)
 			}
