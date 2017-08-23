@@ -18,7 +18,7 @@ var _ = Describe("requiring execjs", func() {
 		app.SetEnv("BP_DEBUG", "1")
 	})
 
-	FIt("", func() {
+	It("", func() {
 		PushAppAndConfirm(app)
 		Expect(app.Stdout.String()).To(ContainSubstring("Installing node 4."))
 
