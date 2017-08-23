@@ -76,13 +76,13 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	if err := s.CreateDefaultEnv(); err != nil {
-		s.Log.Error("Unable to setup default environment: %s", err.Error())
+	if err := s.InstallBundler(); err != nil {
+		s.Log.Error("Unable to install bundler: %s", err.Error())
 		return err
 	}
 
-	if err := s.InstallBundler(); err != nil {
-		s.Log.Error("Unable to install bundler: %s", err.Error())
+	if err := s.CreateDefaultEnv(); err != nil {
+		s.Log.Error("Unable to setup default environment: %s", err.Error())
 		return err
 	}
 
@@ -136,6 +136,28 @@ func Run(s *Supplier) error {
 			return err
 		}
 	}
+
+	// TODO extract
+	rubyEngineVersion, err := s.Versions.RubyEngineVersion()
+	if err != nil {
+		s.Log.Error("Unable to determine ruby engine: %s", err.Error())
+		return err
+	}
+	environmentDefaults := map[string]string{
+		"BUNDLE_PATH": filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
+		"GEM_PATH": strings.Join([]string{
+			filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
+			filepath.Join(s.Stager.DepDir(), "gem_home"),
+			filepath.Join(s.Stager.DepDir(), "bundler"),
+		}, ":"),
+	}
+	for envVar, envDefault := range environmentDefaults {
+		_ = os.Setenv(envVar, envDefault)
+		if err := s.Stager.WriteEnvFile(envVar, envDefault); err != nil {
+			return err
+		}
+	}
+	// END TODO extract
 
 	if err := s.InstallGems(); err != nil {
 		s.Log.Error("Unable to install gems: %s", err.Error())
@@ -217,16 +239,6 @@ func (s *Supplier) InstallYarnDependencies() error {
 
 func (s *Supplier) InstallBundler() error {
 	if err := s.Manifest.InstallOnlyVersion("bundler", filepath.Join(s.Stager.DepDir(), "bundler")); err != nil {
-		return err
-	}
-	_ = os.Setenv("GEM_HOME", filepath.Join(s.Stager.DepDir(), "gem_home"))
-	if err := s.Stager.WriteEnvFile("GEM_HOME", filepath.Join(s.Stager.DepDir(), "gem_home")); err != nil {
-		return err
-	}
-	// TODO use correct engine below, NOT 2.4.0
-	gemPath := strings.Join([]string{filepath.Join(s.Stager.DepDir(), "vendor_bundle/ruby/2.4.0"), filepath.Join(s.Stager.DepDir(), "gem_home"), filepath.Join(s.Stager.DepDir(), "bundler")}, ":")
-	_ = os.Setenv("GEM_PATH", gemPath)
-	if err := s.Stager.WriteEnvFile("GEM_PATH", gemPath); err != nil {
 		return err
 	}
 
@@ -397,22 +409,11 @@ func (s *Supplier) InstallGems() error {
 		without = "development:test"
 	}
 
-	// TODO do properly ???
-	_ = os.Setenv("BUNDLE_PATH", filepath.Join(s.Stager.DepDir(), "vendor_bundle", "ruby", "2.4.0")) // TODO engine properly
-	_ = os.Setenv("BUNDLE_BIN", filepath.Join(s.Stager.DepDir(), "binstubs"))
-	_ = os.Setenv("BUNDLE_WITHOUT", without)
-	_ = os.Setenv("BUNDLE_CONFIG", filepath.Join(s.Stager.DepDir(), "bundle_config"))
-	_ = os.Setenv("BUNDLE_DISABLE_SHARED_GEMS", "true")
-	// _ = os.Setenv("BUNDLE_IGNORE_CONFIG", "1")
-
 	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
 	if exists, err := libbuildpack.FileExists(gemfileLock); err != nil {
 		return err
 	} else if exists {
 		args = append(args, "--deployment")
-
-		// TODO do properly ???
-		_ = os.Setenv("BUNDLE_FROZEN", "1")
 	}
 
 	version := s.Manifest.AllDependencyVersions("bundler")
@@ -483,11 +484,17 @@ func (s *Supplier) InstallGems() error {
 }
 
 func (s *Supplier) CreateDefaultEnv() error {
-	var environmentDefaults = map[string]string{
-		"RAILS_ENV":    "production",
-		"RACK_ENV":     "production",
-		"RAILS_GROUPS": "assets",
-		"BUNDLE_PATH":  filepath.Join(s.Stager.DepDir(), "vendor_bundle"),
+	environmentDefaults := map[string]string{
+		"RAILS_ENV":     "production",
+		"RACK_ENV":      "production",
+		"RAILS_GROUPS":  "assets",
+		"BUNDLE_BIN":    filepath.Join(s.Stager.DepDir(), "binstubs"),
+		"BUNDLE_CONFIG": filepath.Join(s.Stager.DepDir(), "bundle_config"),
+		"GEM_HOME":      filepath.Join(s.Stager.DepDir(), "gem_home"),
+		"GEM_PATH": strings.Join([]string{
+			filepath.Join(s.Stager.DepDir(), "gem_home"),
+			filepath.Join(s.Stager.DepDir(), "bundler"),
+		}, ":"),
 	}
 
 	for envVar, envDefault := range environmentDefaults {
@@ -518,13 +525,13 @@ export RACK_ENV=${RACK_ENV:-production}
 export RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-enabled}
 export RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-enabled}
 
-export GEM_HOME=${GEM_HOME:-$DEPS_DIR/%s/gem_home}
-export GEM_PATH=${GEM_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
-export BUNDLE_PATH=${BUNDLE_PATH:-$DEPS_DIR/%s/vendor_bundle}
+export GEM_HOME=$DEPS_DIR/%s/gem_home
+export GEM_PATH=$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler
+export BUNDLE_PATH=$DEPS_DIR/%s/vendor_bundle/%s/%s
 
 ## Change to current DEPS_DIR
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
-		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, depsIdx)
+		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx)
 
 	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
 	if err != nil {
