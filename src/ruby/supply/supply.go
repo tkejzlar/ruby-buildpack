@@ -389,6 +389,7 @@ func (s *Supplier) InstallGems() error {
 		return err
 	} else if hasFile {
 		s.Log.Debug("Remove %s", gemfileLock)
+		s.Log.Warning("Removing `Gemfile.lock` because it was generated on Windows.\nBundler will do a full resolve so native gems are handled properly.\nThis may result in unexpected gem versions being used in your app.\nIn rare occasions Bundler may not be able to resolve your dependencies at all.\nhttps://docs.cloudfoundry.org/buildpacks/ruby/windows.html")
 		if err := os.Remove(gemfileLock); err != nil {
 			return err
 		}
