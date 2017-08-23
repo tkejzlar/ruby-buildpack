@@ -137,27 +137,10 @@ func Run(s *Supplier) error {
 		}
 	}
 
-	// TODO extract
-	rubyEngineVersion, err := s.Versions.RubyEngineVersion()
-	if err != nil {
-		s.Log.Error("Unable to determine ruby engine: %s", err.Error())
+	if err := s.AddBundleAndGemPathsToEnv(engine); err != nil {
+		s.Log.Error("Unable to add bundler and gem path to default environment: %s", err.Error())
 		return err
 	}
-	environmentDefaults := map[string]string{
-		"BUNDLE_PATH": filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
-		"GEM_PATH": strings.Join([]string{
-			filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
-			filepath.Join(s.Stager.DepDir(), "gem_home"),
-			filepath.Join(s.Stager.DepDir(), "bundler"),
-		}, ":"),
-	}
-	for envVar, envDefault := range environmentDefaults {
-		_ = os.Setenv(envVar, envDefault)
-		if err := s.Stager.WriteEnvFile(envVar, envDefault); err != nil {
-			return err
-		}
-	}
-	// END TODO extract
 
 	if err := s.InstallGems(); err != nil {
 		s.Log.Error("Unable to install gems: %s", err.Error())
@@ -494,16 +477,35 @@ func (s *Supplier) CreateDefaultEnv() error {
 			filepath.Join(s.Stager.DepDir(), "bundler"),
 		}, ":"),
 	}
+	return s.writeEnvFiles(environmentDefaults, false)
+}
 
-	for envVar, envDefault := range environmentDefaults {
-		if os.Getenv(envVar) == "" {
+func (s *Supplier) AddBundleAndGemPathsToEnv(engine string) error {
+	rubyEngineVersion, err := s.Versions.RubyEngineVersion()
+	if err != nil {
+		s.Log.Error("Unable to determine ruby engine: %s", err.Error())
+		return err
+	}
+	environmentDefaults := map[string]string{
+		"BUNDLE_PATH": filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
+		"GEM_PATH": strings.Join([]string{
+			filepath.Join(s.Stager.DepDir(), "vendor_bundle", engine, rubyEngineVersion),
+			filepath.Join(s.Stager.DepDir(), "gem_home"),
+			filepath.Join(s.Stager.DepDir(), "bundler"),
+		}, ":"),
+	}
+	return s.writeEnvFiles(environmentDefaults, true)
+}
+
+func (s *Supplier) writeEnvFiles(environment map[string]string, clobber bool) error {
+	for envVar, envDefault := range environment {
+		if os.Getenv(envVar) == "" || clobber {
 			_ = os.Setenv(envVar, envDefault)
 			if err := s.Stager.WriteEnvFile(envVar, envDefault); err != nil {
 				return err
 			}
 		}
 	}
-
 	return nil
 }
 
