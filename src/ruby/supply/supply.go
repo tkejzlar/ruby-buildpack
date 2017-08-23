@@ -369,10 +369,24 @@ func (s *Supplier) InstallGems() error {
 	s.warnBundleConfig()
 	s.warnWindowsGemfile()
 
+	tempDir, err := ioutil.TempDir("", "app")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("cp", "-al", s.Stager.BuildDir(), tempDir)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		s.Log.Error(string(output))
+		return fmt.Errorf("Could not copy build dir to temp: %v", err)
+	}
+
 	if hasFile, err := s.Versions.HasWindowsGemfileLock(); err != nil {
 		return err
 	} else if hasFile {
-		os.Remove(s.Versions.Gemfile() + ".lock")
+		gemfile, err := filepath.Rel(s.Stager.BuildDir(), s.Versions.Gemfile())
+		if err != nil {
+			return nil
+		}
+		os.Remove(filepath.Join(tempDir, gemfile) + ".lock")
 	}
 
 	without := os.Getenv("BUNDLE_WITHOUT")
@@ -393,10 +407,9 @@ func (s *Supplier) InstallGems() error {
 
 	env := os.Environ()
 	env = append(env, "NOKOGIRI_USE_SYSTEM_LIBRARIES=true")
-	env = append(env, "BUNDLE_CONFIG=/tmp/bundle_config")
 
-	cmd := exec.Command("bundle", args...)
-	cmd.Dir = s.Stager.BuildDir()
+	cmd = exec.Command("bundle", args...)
+	cmd.Dir = tempDir
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
 	cmd.Env = env
@@ -407,11 +420,15 @@ func (s *Supplier) InstallGems() error {
 	s.Log.Info("Cleaning up the bundler cache.")
 
 	cmd = exec.Command("bundle", "clean")
-	cmd.Dir = s.Stager.BuildDir()
+	cmd.Dir = tempDir
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
 	cmd.Env = env
-	return s.Command.Run(cmd)
+	if err := s.Command.Run(cmd); err != nil {
+		return err
+	}
+
+	return os.RemoveAll(tempDir)
 }
 
 func (s *Supplier) CreateDefaultEnv() error {
