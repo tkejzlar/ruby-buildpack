@@ -438,6 +438,13 @@ func (s *Supplier) InstallGems() error {
 		return err
 	}
 
+	// Save Gemfile.lock for finalize
+	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), ".bundle", "config")); err == nil && exists {
+		if err := os.Rename(gemfileLock, filepath.Join(s.Stager.DepDir(), "Gemfile.lock")); err != nil {
+			return err
+		}
+	}
+
 	return os.RemoveAll(tempDir)
 }
 

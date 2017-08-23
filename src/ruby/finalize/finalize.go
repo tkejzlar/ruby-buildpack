@@ -36,6 +36,11 @@ func Run(f *Finalizer) error {
 		return err
 	}
 
+	if err := f.RestoreGemfileLock(); err != nil {
+		f.Log.Error("Error copying Gemfile.lock to app: %v", err)
+		return err
+	}
+
 	if err := f.InstallPlugins(); err != nil {
 		f.Log.Error("Error installing plugins: %v", err)
 		return err
@@ -97,6 +102,19 @@ func (f *Finalizer) Setup() error {
 		return err
 	}
 
+	return nil
+}
+
+func (f *Finalizer) RestoreGemfileLock() error {
+	if exists, err := libbuildpack.FileExists(filepath.Join(f.Stager.DepDir(), "Gemfile.lock")); err != nil {
+		return err
+	} else if exists {
+		gemfile := "Gemfile"
+		if os.Getenv("BUNDLE_GEMFILE") != "" {
+			gemfile = os.Getenv("BUNDLE_GEMFILE")
+		}
+		return os.Rename(filepath.Join(f.Stager.DepDir(), "Gemfile.lock"), filepath.Join(f.Stager.BuildDir(), gemfile)+".lock")
+	}
 	return nil
 }
 
