@@ -137,17 +137,9 @@ func Run(s *Supplier) error {
 		}
 	}
 
-	if checksum, err := s.CalcChecksum(); err == nil {
-		s.Log.Debug("BuildDir Checksum Before InstallGems: %s", checksum)
-	}
-
 	if err := s.InstallGems(); err != nil {
 		s.Log.Error("Unable to install gems: %s", err.Error())
 		return err
-	}
-
-	if checksum, err := s.CalcChecksum(); err == nil {
-		s.Log.Debug("BuildDir Checksum After InstallGems: %s", checksum)
 	}
 
 	if err := s.WriteProfileD(engine); err != nil {
