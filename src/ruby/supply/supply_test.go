@@ -2,6 +2,7 @@ package supply_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -373,6 +374,96 @@ var _ = Describe("Supply", func() {
 				contents, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "profile.d", "ruby.sh"))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(string(contents)).To(ContainSubstring("export GEM_PATH=${GEM_PATH:-$DEPS_DIR/9/vendor_bundle/somerubyengine/2.3.19:$DEPS_DIR/9/gem_home:$DEPS_DIR/9/bundler}"))
+			})
+		})
+	})
+
+	Describe("DetermineRuby", func() {
+		Context("MRI", func() {
+			BeforeEach(func() {
+				mockVersions.EXPECT().Engine().Return("ruby", nil)
+			})
+
+			Context("version determined from Gemfile", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().Version().Return("2.3.1", nil)
+				})
+
+				It("returns the engine and version", func() {
+					engine, version, err := supplier.DetermineRuby()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(engine).To(Equal("ruby"))
+					Expect(version).To(Equal("2.3.1"))
+				})
+			})
+
+			Context("version not determined from Gemfile", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().Version().Return("", nil)
+					mockManifest.EXPECT().DefaultVersion("ruby").Return(libbuildpack.Dependency{Version: "9.10.11"}, nil)
+				})
+
+				It("returns ruby with the default from the manifest", func() {
+					engine, version, err := supplier.DetermineRuby()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(engine).To(Equal("ruby"))
+					Expect(version).To(Equal("9.10.11"))
+				})
+
+				It("logs a warning", func() {
+					_, _, err := supplier.DetermineRuby()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(buffer.String()).To(ContainSubstring("You have not declared a Ruby version in your Gemfile."))
+					Expect(buffer.String()).To(ContainSubstring("Defaulting to 9.10.11"))
+				})
+			})
+
+			Context("version in Gemfile not in manifest", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().Version().Return("", errors.New(""))
+				})
+
+				It("returns an error", func() {
+					_, _, err := supplier.DetermineRuby()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+		})
+		Context("jruby", func() {
+			BeforeEach(func() {
+				mockVersions.EXPECT().Engine().Return("jruby", nil)
+			})
+			Context("version determined from Gemfile", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().JrubyVersion().Return("ruby-3.1.2-jruby-2.1.6", nil)
+				})
+
+				It("returns the engine and version", func() {
+					engine, version, err := supplier.DetermineRuby()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(engine).To(Equal("jruby"))
+					Expect(version).To(Equal("ruby-3.1.2-jruby-2.1.6"))
+				})
+			})
+			Context("version in Gemfile not in manifest", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().JrubyVersion().Return("", errors.New(""))
+				})
+
+				It("returns an error", func() {
+					_, _, err := supplier.DetermineRuby()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+		Context("other", func() {
+			BeforeEach(func() {
+				mockVersions.EXPECT().Engine().Return("rubinius", nil)
+			})
+			It("returns an error", func() {
+				_, _, err := supplier.DetermineRuby()
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})

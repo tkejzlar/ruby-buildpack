@@ -26,6 +26,7 @@ type Manifest interface {
 	AllDependencyVersions(string) []string
 	InstallDependency(libbuildpack.Dependency, string) error
 	InstallOnlyVersion(string, string) error
+	DefaultVersion(string) (libbuildpack.Dependency, error)
 }
 type Versions interface {
 	Engine() (string, error)
@@ -86,33 +87,17 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	engine, err := s.Versions.Engine()
+	engine, rubyVersion, err := s.DetermineRuby()
 	if err != nil {
-		s.Log.Error("Unable to determine ruby engine: %s", err.Error())
+		s.Log.Error(err.Error())
 		return err
 	}
 
-	var rubyVersion string
-	if engine == "ruby" {
-		rubyVersion, err = s.Versions.Version()
-		if err != nil {
-			s.Log.Error("Unable to determine ruby version: %s", err.Error())
-			return err
-		}
-
-	} else if engine == "jruby" {
-		rubyVersion, err = s.Versions.JrubyVersion()
-		if err != nil {
-			s.Log.Error("Unable to determine jruby version: %s", err.Error())
-			return err
-		}
+	if engine == "jruby" {
 		if err = s.InstallJVM(); err != nil {
 			s.Log.Error("Unable to install JVM: %s", err.Error())
 			return err
 		}
-	} else {
-		s.Log.Error("Sorry, we do not support engine: %s", engine)
-		return fmt.Errorf("Sorry, we do not support engine: %s", engine)
 	}
 
 	if err := s.InstallRuby(engine, rubyVersion); err != nil {
@@ -172,6 +157,37 @@ func Run(s *Supplier) error {
 	}
 
 	return nil
+}
+
+func (s *Supplier) DetermineRuby() (string, string, error) {
+	engine, err := s.Versions.Engine()
+	if err != nil {
+		return "", "", fmt.Errorf("Unable to determine ruby engine: %v", err)
+	}
+
+	var rubyVersion string
+	if engine == "ruby" {
+		rubyVersion, err = s.Versions.Version()
+		if err != nil {
+			return "", "", fmt.Errorf("Unable to determine ruby version: %v", err)
+		}
+		if rubyVersion == "" {
+			if dep, err := s.Manifest.DefaultVersion("ruby"); err != nil {
+				return "", "", fmt.Errorf("Unable to determine ruby version: %v", err)
+			} else {
+				rubyVersion = dep.Version
+				s.Log.Warning("You have not declared a Ruby version in your Gemfile.\nDefaulting to %s\nSee http://docs.cloudfoundry.org/buildpacks/ruby/index.html#runtime for more information.", rubyVersion)
+			}
+		}
+	} else if engine == "jruby" {
+		rubyVersion, err = s.Versions.JrubyVersion()
+		if err != nil {
+			return "", "", fmt.Errorf("Unable to determine jruby version: %v", err)
+		}
+	} else {
+		return "", "", fmt.Errorf("Sorry, we do not support engine: %s", engine)
+	}
+	return engine, rubyVersion, nil
 }
 
 func (s *Supplier) InstallYarn() error {
@@ -525,9 +541,9 @@ export RACK_ENV=${RACK_ENV:-production}
 export RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-enabled}
 export RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-enabled}
 
-export GEM_HOME=$DEPS_DIR/%s/gem_home
-export GEM_PATH=$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler
-export BUNDLE_PATH=$DEPS_DIR/%s/vendor_bundle/%s/%s
+export GEM_HOME=${GEM_HOME:-$DEPS_DIR/%s/gem_home}
+export GEM_PATH=${GEM_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s:$DEPS_DIR/%s/gem_home:$DEPS_DIR/%s/bundler}
+export BUNDLE_PATH=${BUNDLE_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s}
 
 ## Change to current DEPS_DIR
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
@@ -540,10 +556,6 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 	if hasRails41 {
 		metadata := s.Cache.Metadata()
 		if metadata.SecretKeyBase == "" {
-
-			env, err := s.Command.Output(s.Stager.BuildDir(), "printenv")
-			fmt.Println(env, err)
-
 			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
 			if err != nil {
 				return fmt.Errorf("Running 'rake secret'", err)

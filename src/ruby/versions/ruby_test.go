@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"ruby/versions"
 
-	"github.com/cloudfoundry/libbuildpack"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -127,11 +126,10 @@ var _ = Describe("Ruby", func() {
 
 			It("returns the default version from the manifest", func() {
 				manifest.EXPECT().AllDependencyVersions("ruby").Return([]string{"1.2.3", "2.2.3", "2.2.4", "2.2.1", "3.1.2"})
-				manifest.EXPECT().DefaultVersion("ruby").Return(libbuildpack.Dependency{Version: "3.2.1"}, nil)
 				v := versions.New(tmpDir, manifest)
 				version, err := v.Version()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(version).To(Equal("3.2.1"))
+				Expect(version).To(Equal(""))
 			})
 		})
 

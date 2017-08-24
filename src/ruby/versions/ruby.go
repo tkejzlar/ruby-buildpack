@@ -69,13 +69,7 @@ func (v *Versions) Version() (string, error) {
 		return "", err
 	}
 
-	version := data.(string)
-	if version == "" {
-		// TODO warning about no version set by dev https://github.com/cloudfoundry/ruby-buildpack/blob/master/lib/language_pack/ruby.rb#L367-L372
-		dep, err := v.manifest.DefaultVersion("ruby")
-		return dep.Version, err
-	}
-	return version, nil
+	return data.(string), nil
 }
 
 func (v *Versions) JrubyVersion() (string, error) {
