@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/cloudfoundry/libbuildpack"
   packages = [".","ansicleaner","cutlass","packager"]
-  revision = "c535d005dc648d3d8537e929a80191df4143a6c1"
+  revision = "7c44a8720c6a8a06bf3095bd37402bf9efa00552"
 
 [[projects]]
   name = "github.com/elazarl/goproxy"
@@ -28,7 +28,7 @@
   branch = "master"
   name = "github.com/golang/mock"
   packages = ["gomock"]
-  revision = "1df903b45f27b0b3685fa78609b653a54c7eead8"
+  revision = "18f6dd13ccdd227b8ebc546ca95cd62a02f3970c"
 
 [[projects]]
   branch = "master"
@@ -70,13 +70,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "9f7170bcd8e9f4d3691c06401119c46a769a1e03"
+  revision = "07c182904dbd53199946ba614a412c61d3c548f5"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["encoding","encoding/charmap","encoding/htmlindex","encoding/internal","encoding/internal/identifier","encoding/japanese","encoding/korean","encoding/simplifiedchinese","encoding/traditionalchinese","encoding/unicode","internal/gen","internal/tag","internal/utf8internal","language","runes","transform","unicode/cldr"]
-  revision = "e56139fd9c5bc7244c76116c68e500765bb6db6b"
+  revision = "cc24f0397b10b6321b1a1322b6bd592984fdabf2"
 
 [[projects]]
   branch = "v2"
