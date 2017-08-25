@@ -498,43 +498,6 @@ var _ = Describe("Supply", func() {
 		})
 	})
 
-	Describe("InstallYarnDependencies", func() {
-		Context("app has yarn.lock nd bin/yarn files", func() {
-			BeforeEach(func() {
-				Expect(ioutil.WriteFile(filepath.Join(buildDir, "yarn.lock"), []byte("contents"), 0644)).To(Succeed())
-				Expect(os.MkdirAll(filepath.Join(buildDir, "bin"), 0755)).To(Succeed())
-				Expect(ioutil.WriteFile(filepath.Join(buildDir, "bin", "yarn"), []byte("executable"), 0755)).To(Succeed())
-			})
-			It("runs bin/yarn install", func() {
-				mockCommand.EXPECT().Run(gomock.Any()).Do(func(cmd *exec.Cmd) {
-					Expect(cmd.Dir).To(Equal(buildDir))
-					Expect(cmd.Args).To(Equal([]string{"bin/yarn", "install", "--pure-lockfile", "--ignore-engines", "--cache-folder", filepath.Join(depsDir, depsIdx, "cache_yarn"), "--modules-folder", os.Getenv("NODE_HOME"), "--no-bin-links"}))
-					Expect(cmd.Env).To(ContainElement(fmt.Sprintf("npm_config_nodedir=%s", os.Getenv("NODE_HOME"))))
-					Expect(os.Getenv("NODE_HOME")).ToNot(BeEmpty())
-				})
-				Expect(supplier.InstallYarnDependencies()).To(Succeed())
-			})
-		})
-		Context("app does not have a yarn.lock file", func() {
-			BeforeEach(func() {
-				Expect(ioutil.WriteFile(filepath.Join(buildDir, "yarn.lock"), []byte("contents"), 0644)).To(Succeed())
-			})
-			It("does NOT run yarn install", func() {
-				Expect(supplier.InstallYarnDependencies()).To(Succeed())
-			})
-		})
-
-		Context("app does not have a bin/yarn file", func() {
-			BeforeEach(func() {
-				Expect(os.MkdirAll(filepath.Join(buildDir, "bin"), 0755)).To(Succeed())
-				Expect(ioutil.WriteFile(filepath.Join(buildDir, "bin", "yarn"), []byte("executable"), 0755)).To(Succeed())
-			})
-			It("does NOT run yarn install", func() {
-				Expect(supplier.InstallYarnDependencies()).To(Succeed())
-			})
-		})
-	})
-
 	Describe("NeedsNode", func() {
 		Context("node is not already installed", func() {
 			BeforeEach(func() {

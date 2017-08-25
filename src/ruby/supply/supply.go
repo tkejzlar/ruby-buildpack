@@ -122,11 +122,6 @@ func Run(s *Supplier) error {
 			s.Log.Error("Unable to install node: %s", err.Error())
 			return err
 		}
-
-		if err := s.InstallYarnDependencies(); err != nil {
-			s.Log.Error("Unable to install yarn dependencies: %s", err.Error())
-			return err
-		}
 	}
 
 	if err := s.InstallGems(); err != nil {
@@ -212,32 +207,6 @@ func (s *Supplier) InstallYarn() error {
 		return err
 	}
 	return s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "yarn", "bin"), "bin")
-}
-
-func (s *Supplier) InstallYarnDependencies() error {
-	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "yarn.lock")); err != nil {
-		return err
-	} else if !exists {
-		return nil
-	}
-	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "bin/yarn")); err != nil {
-		return err
-	} else if !exists {
-		return nil
-	}
-
-	s.Log.BeginStep("Installing dependencies using yarn")
-
-	os.Setenv("NODE_HOME", filepath.Join(s.Stager.DepDir(), "node_modules"))
-	os.Setenv("npm_config_nodedir", os.Getenv("NODE_HOME"))
-	defer os.Unsetenv("npm_config_nodedir")
-
-	cmd := exec.Command("bin/yarn", "install", "--pure-lockfile", "--ignore-engines", "--cache-folder", filepath.Join(s.Stager.DepDir(), "cache_yarn"), "--modules-folder", os.Getenv("NODE_HOME"), "--no-bin-links")
-	cmd.Dir = s.Stager.BuildDir()
-	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
-	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
-	cmd.Env = append(os.Environ(), fmt.Sprintf("npm_config_nodedir=%s", os.Getenv("NODE_HOME")))
-	return s.Command.Run(cmd)
 }
 
 func (s *Supplier) InstallBundler() error {
@@ -525,9 +494,6 @@ func (s *Supplier) AddPostRubyInstallDefaultEnv(engine string) error {
 		}, ":"),
 	}
 	s.Log.Debug("Setting post ruby install env: %v", environmentDefaults)
-	if s.NeedsNode() {
-		environmentDefaults["NODE_HOME"] = filepath.Join(s.Stager.DepDir(), "node_modules")
-	}
 	return s.writeEnvFiles(environmentDefaults, true)
 }
 
@@ -567,10 +533,6 @@ export BUNDLE_PATH=${BUNDLE_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s}
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 bundle config WITHOUT "%s" > /dev/null
 `, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, os.Getenv("BUNDLE_WITHOUT"))
-
-	if s.NeedsNode() {
-		scriptContents += fmt.Sprintf("\nexport NODE_HOME=${NODE_HOME:-$DEPS_DIR/%s/node_modules}\n", depsIdx)
-	}
 
 	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
 	if err != nil {
