@@ -296,6 +296,9 @@ var _ = Describe("Supply", func() {
 	})
 
 	Describe("WriteProfileD", func() {
+		BeforeEach(func() {
+			mockCommand.EXPECT().Output(buildDir, "node", "--version").AnyTimes().Return("v8.2.1", nil)
+		})
 		Describe("SecretKeyBase", func() {
 			Context("Rails >= 4.1", func() {
 				BeforeEach(func() {
@@ -503,7 +506,12 @@ var _ = Describe("Supply", func() {
 				Expect(ioutil.WriteFile(filepath.Join(buildDir, "bin", "yarn"), []byte("executable"), 0755)).To(Succeed())
 			})
 			It("runs bin/yarn install", func() {
-				mockCommand.EXPECT().Execute(buildDir, gomock.Any(), gomock.Any(), "bin/yarn", "install").Return(nil)
+				mockCommand.EXPECT().Run(gomock.Any()).Do(func(cmd *exec.Cmd) {
+					Expect(cmd.Dir).To(Equal(buildDir))
+					Expect(cmd.Args).To(Equal([]string{"bin/yarn", "install", "--pure-lockfile", "--ignore-engines", "--cache-folder", filepath.Join(depsDir, depsIdx, "cache_yarn"), "--modules-folder", os.Getenv("NODE_HOME"), "--no-bin-links"}))
+					Expect(cmd.Env).To(ContainElement(fmt.Sprintf("npm_config_nodedir=%s", os.Getenv("NODE_HOME"))))
+					Expect(os.Getenv("NODE_HOME")).ToNot(BeEmpty())
+				})
 				Expect(supplier.InstallYarnDependencies()).To(Succeed())
 			})
 		})
@@ -527,21 +535,44 @@ var _ = Describe("Supply", func() {
 		})
 	})
 
-	Describe("HasNode", func() {
-		Context("node is already installed", func() {
-			BeforeEach(func() {
-				mockCommand.EXPECT().Output(buildDir, "node", "--version").Return("v8.2.1", nil)
-			})
-			It("returns true", func() {
-				Expect(supplier.HasNode()).To(BeTrue())
-			})
-		})
+	Describe("NeedsNode", func() {
 		Context("node is not already installed", func() {
 			BeforeEach(func() {
-				mockCommand.EXPECT().Output(buildDir, "node", "--version").Return("", fmt.Errorf("could not find node"))
+				mockCommand.EXPECT().Output(buildDir, "node", "--version").AnyTimes().Return("", fmt.Errorf("could not find node"))
+			})
+			Context("webpacker is installed", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().HasGemVersion("webpacker", ">=0.0.0").Return(true, nil)
+					mockVersions.EXPECT().HasGemVersion(gomock.Any(), ">=0.0.0").AnyTimes().Return(false, nil)
+				})
+				It("returns true", func() {
+					Expect(supplier.NeedsNode()).To(BeTrue())
+				})
+			})
+			Context("execjs is installed", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().HasGemVersion("execjs", ">=0.0.0").Return(true, nil)
+					mockVersions.EXPECT().HasGemVersion(gomock.Any(), ">=0.0.0").AnyTimes().Return(false, nil)
+				})
+				It("returns true", func() {
+					Expect(supplier.NeedsNode()).To(BeTrue())
+				})
+			})
+			Context("neither webpacker nor execjs are installed", func() {
+				BeforeEach(func() {
+					mockVersions.EXPECT().HasGemVersion(gomock.Any(), ">=0.0.0").AnyTimes().Return(false, nil)
+				})
+				It("returns false", func() {
+					Expect(supplier.NeedsNode()).To(BeFalse())
+				})
+			})
+		})
+		Context("node is already installed", func() {
+			BeforeEach(func() {
+				mockCommand.EXPECT().Output(buildDir, "node", "--version").AnyTimes().Return("v8.2.1", nil)
 			})
 			It("returns false", func() {
-				Expect(supplier.HasNode()).To(BeFalse())
+				Expect(supplier.NeedsNode()).To(BeFalse())
 			})
 		})
 	})

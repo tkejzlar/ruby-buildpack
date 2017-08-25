@@ -303,6 +303,7 @@ func (s *Supplier) NeedsNode() bool {
 			if err == nil && hasgem {
 				s.Log.Debug("Found %s in gemfile", name)
 				s.needsNode = true
+				break
 			}
 		}
 	}
