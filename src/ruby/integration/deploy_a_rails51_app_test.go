@@ -16,6 +16,7 @@ var _ = Describe("Rails 5.1 (Webpack/Yarn) App", func() {
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails51"))
+		app.SetEnv("BP_DEBUG", "1")
 	})
 
 	FIt("Installs node6 and runs", func() {

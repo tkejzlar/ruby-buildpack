@@ -55,12 +55,14 @@ type Cache interface {
 }
 
 type Supplier struct {
-	Stager   Stager
-	Manifest Manifest
-	Log      *libbuildpack.Logger
-	Versions Versions
-	Cache    Cache
-	Command  Command
+	Stager          Stager
+	Manifest        Manifest
+	Log             *libbuildpack.Logger
+	Versions        Versions
+	Cache           Cache
+	Command         Command
+	cachedNeedsNode bool
+	needsNode       bool
 }
 
 func Run(s *Supplier) error {
@@ -105,7 +107,12 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	if !s.HasNode() && s.NeedsNode() {
+	if err := s.AddPostRubyInstallDefaultEnv(engine); err != nil {
+		s.Log.Error("Unable to add bundler and gem path to default environment: %s", err.Error())
+		return err
+	}
+
+	if s.NeedsNode() {
 		if err := s.InstallNode(); err != nil {
 			s.Log.Error("Unable to install node: %s", err.Error())
 			return err
@@ -120,11 +127,6 @@ func Run(s *Supplier) error {
 			s.Log.Error("Unable to install yarn dependencies: %s", err.Error())
 			return err
 		}
-	}
-
-	if err := s.AddBundleAndGemPathsToEnv(engine); err != nil {
-		s.Log.Error("Unable to add bundler and gem path to default environment: %s", err.Error())
-		return err
 	}
 
 	if err := s.InstallGems(); err != nil {
@@ -226,12 +228,12 @@ func (s *Supplier) InstallYarnDependencies() error {
 
 	s.Log.BeginStep("Installing dependencies using yarn")
 
-	return s.Command.Execute(
-		s.Stager.BuildDir(),
-		text.NewIndentWriter(os.Stdout, []byte("       ")),
-		text.NewIndentWriter(os.Stderr, []byte("       ")),
-		"bin/yarn", "install",
-	)
+	cmd := exec.Command("bin/yarn", "install")
+	cmd.Dir = s.Stager.BuildDir()
+	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
+	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("npm_config_nodedir=%s", os.Getenv("NODE_HOME")))
+	return s.Command.Run(cmd)
 }
 
 func (s *Supplier) InstallBundler() error {
@@ -283,19 +285,30 @@ func (s *Supplier) InstallNode() error {
 	return s.Stager.LinkDirectoryInDepDir(filepath.Join(nodeInstallDir, "bin"), "bin")
 }
 
-func (s *Supplier) HasNode() bool {
-	_, err := s.Command.Output(s.Stager.BuildDir(), "node", "--version")
-	return err == nil
-}
-
 func (s *Supplier) NeedsNode() bool {
-	for _, name := range []string{"webpacker", "execjs"} {
-		hasgem, err := s.Versions.HasGemVersion(name, ">=0.0.0")
-		if err == nil && hasgem {
-			return true
+	if s.cachedNeedsNode {
+		return s.needsNode
+	}
+	s.cachedNeedsNode = true
+	s.needsNode = false
+
+	if !s.isNodeInstalled() {
+		for _, name := range []string{"webpacker", "execjs"} {
+			s.Log.Debug("Test %s in gemfile", name)
+			hasgem, err := s.Versions.HasGemVersion(name, ">=0.0.0")
+			if err == nil && hasgem {
+				s.Log.Debug("Found %s in gemfile", name)
+				s.needsNode = true
+			}
 		}
 	}
-	return false
+
+	return s.needsNode
+}
+
+func (s *Supplier) isNodeInstalled() bool {
+	_, err := s.Command.Output(s.Stager.BuildDir(), "node", "--version")
+	return err == nil
 }
 
 func (s *Supplier) InstallJVM() error {
@@ -401,12 +414,7 @@ func (s *Supplier) InstallGems() error {
 		}
 	}
 
-	without := os.Getenv("BUNDLE_WITHOUT")
-	if without == "" {
-		without = "development:test"
-	}
-
-	args := []string{"install", "--without", without, "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
+	args := []string{"install", "--without", os.Getenv("BUNDLE_WITHOUT"), "--jobs=4", "--retry=4", "--path", filepath.Join(s.Stager.DepDir(), "vendor_bundle"), "--binstubs", filepath.Join(s.Stager.DepDir(), "binstubs")}
 	if exists, err := libbuildpack.FileExists(gemfileLock); err != nil {
 		return err
 	} else if exists {
@@ -482,12 +490,13 @@ func (s *Supplier) InstallGems() error {
 
 func (s *Supplier) CreateDefaultEnv() error {
 	environmentDefaults := map[string]string{
-		"RAILS_ENV":     "production",
-		"RACK_ENV":      "production",
-		"RAILS_GROUPS":  "assets",
-		"BUNDLE_BIN":    filepath.Join(s.Stager.DepDir(), "binstubs"),
-		"BUNDLE_CONFIG": filepath.Join(s.Stager.DepDir(), "bundle_config"),
-		"GEM_HOME":      filepath.Join(s.Stager.DepDir(), "gem_home"),
+		"RAILS_ENV":      "production",
+		"RACK_ENV":       "production",
+		"RAILS_GROUPS":   "assets",
+		"BUNDLE_WITHOUT": "development:test",
+		"BUNDLE_BIN":     filepath.Join(s.Stager.DepDir(), "binstubs"),
+		"BUNDLE_CONFIG":  filepath.Join(s.Stager.DepDir(), "bundle_config"),
+		"GEM_HOME":       filepath.Join(s.Stager.DepDir(), "gem_home"),
 		"GEM_PATH": strings.Join([]string{
 			filepath.Join(s.Stager.DepDir(), "gem_home"),
 			filepath.Join(s.Stager.DepDir(), "bundler"),
@@ -496,7 +505,7 @@ func (s *Supplier) CreateDefaultEnv() error {
 	return s.writeEnvFiles(environmentDefaults, false)
 }
 
-func (s *Supplier) AddBundleAndGemPathsToEnv(engine string) error {
+func (s *Supplier) AddPostRubyInstallDefaultEnv(engine string) error {
 	rubyEngineVersion, err := s.Versions.RubyEngineVersion()
 	if err != nil {
 		s.Log.Error("Unable to determine ruby engine: %s", err.Error())
@@ -509,6 +518,10 @@ func (s *Supplier) AddBundleAndGemPathsToEnv(engine string) error {
 			filepath.Join(s.Stager.DepDir(), "gem_home"),
 			filepath.Join(s.Stager.DepDir(), "bundler"),
 		}, ":"),
+	}
+	s.Log.Debug("Setting post ruby install env: %v", environmentDefaults)
+	if s.NeedsNode() {
+		environmentDefaults["NODE_HOME"] = filepath.Join(s.Stager.DepDir(), "node_modules")
 	}
 	return s.writeEnvFiles(environmentDefaults, true)
 }
@@ -547,7 +560,12 @@ export BUNDLE_PATH=${BUNDLE_PATH:-$DEPS_DIR/%s/vendor_bundle/%s/%s}
 
 ## Change to current DEPS_DIR
 bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
-		`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx)
+bundle config WITHOUT "%s" > /dev/null
+`, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, os.Getenv("BUNDLE_WITHOUT"))
+
+	if s.NeedsNode() {
+		scriptContents += fmt.Sprintf("\nexport NODE_HOME=${NODE_HOME:-$DEPS_DIR/%s/node_modules}\n", depsIdx)
+	}
 
 	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
 	if err != nil {

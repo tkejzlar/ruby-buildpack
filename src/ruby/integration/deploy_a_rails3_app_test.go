@@ -19,7 +19,7 @@ var _ = Describe("Rails 3 App", func() {
 		app = nil
 	})
 
-	FIt("in an online environment", func() {
+	It("in an online environment", func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails3_mri_200"))
 		app.SetEnv("DATABASE_URL", "sqlite3://db/test.db")
 		PushAppAndConfirm(app)
