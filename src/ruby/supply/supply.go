@@ -153,7 +153,7 @@ func Run(s *Supplier) error {
 		s.Log.Debug("BuildDir Checksum After Supply: %s", checksum)
 	}
 
-	if filesChanged, err := s.Command.Output(s.Stager.BuildDir(), "find", ".", "-newer", "/tmp/checkpoint"); err == nil && filesChanged != "" {
+	if filesChanged, err := s.Command.Output(s.Stager.BuildDir(), "find", ".", "-newer", "/tmp/checkpoint", "-not", "-path", "./.cloudfoundry/*", "-not", "-path", "./.cloudfoundry"); err == nil && filesChanged != "" {
 		s.Log.Debug("Below files changed:")
 		s.Log.Debug(filesChanged)
 	}
@@ -228,7 +228,11 @@ func (s *Supplier) InstallYarnDependencies() error {
 
 	s.Log.BeginStep("Installing dependencies using yarn")
 
-	cmd := exec.Command("bin/yarn", "install")
+	os.Setenv("NODE_HOME", filepath.Join(s.Stager.DepDir(), "node_modules"))
+	os.Setenv("npm_config_nodedir", os.Getenv("NODE_HOME"))
+	defer os.Unsetenv("npm_config_nodedir")
+
+	cmd := exec.Command("bin/yarn", "install", "--pure-lockfile", "--ignore-engines", "--cache-folder", filepath.Join(s.Stager.DepDir(), "cache_yarn"), "--modules-folder", os.Getenv("NODE_HOME"), "--no-bin-links")
 	cmd.Dir = s.Stager.BuildDir()
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
