@@ -146,4 +146,5 @@ include_files:
 - bin/finalize
 - bin/release
 - bin/supply
+- bin/supply_finalize
 - manifest.yml

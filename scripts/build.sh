@@ -7,5 +7,4 @@ BINDIR=$ROOTDIR/bin
 export GOPATH=$ROOTDIR
 export GOOS=linux
 
-go build -ldflags="-s -w" -o $BINDIR/supply ruby/supply/cli
-go build -ldflags="-s -w" -o $BINDIR/finalize ruby/finalize/cli
+go build -ldflags="-s -w" -o $BINDIR/supply_finalize ruby/cli
