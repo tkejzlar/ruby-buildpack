@@ -28,6 +28,7 @@ type Manifest interface {
 	InstallDependency(libbuildpack.Dependency, string) error
 	InstallOnlyVersion(string, string) error
 	DefaultVersion(string) (libbuildpack.Dependency, error)
+	FetchDependency(dep Dependency, outputFile string) error
 }
 type Versions interface {
 	Engine() (string, error)
@@ -359,6 +360,10 @@ func (s *Supplier) InstallRuby(name, version string) error {
 		return err
 	}
 	return s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "ruby", "bin"), "bin")
+}
+
+func (s *Supplier) UpdateRubygems() error {
+	return nil
 }
 
 type IndentedWriter struct {

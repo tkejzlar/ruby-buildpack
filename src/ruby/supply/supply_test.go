@@ -563,4 +563,18 @@ var _ = Describe("Supply", func() {
 			})
 		})
 	})
+
+	Describe("UpdateRubygems", func() {
+		BeforeEach(func() {
+			mockManifest.EXPECT().AllDependencyVersions("rubygems-update").AnyTimes().Return([]string{"2.6.13"})
+		})
+		Context("gem version is less than 2.6.13", func() {
+			BeforeEach(func() {
+				mockCommand.EXPECT().Output(buildDir, "gem", "--version").AnyTimes().Return("2.6.12\n", nil)
+			})
+
+			It("updates rubygems", func() {
+			})
+		})
+	})
 })
