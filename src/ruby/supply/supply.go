@@ -379,22 +379,25 @@ func (s *Supplier) UpdateRubygems() error {
 	dep.Version = versions[0]
 	gemPath := filepath.Join(os.TempDir(), "rubygems-update.gem")
 
-	if currVersion, err := s.Command.Output("/", "gem", "--version"); err != nil {
+	currVersion, err := s.Command.Output("/", "gem", "--version")
+	if err != nil {
 		return fmt.Errorf("Could not determine current version of rubygems: %v", err)
-	} else {
-		currVersion = strings.TrimSpace(currVersion)
-		c, err := semver.NewConstraint(fmt.Sprintf(">= %s", dep.Version))
-		if err != nil {
-			return fmt.Errorf("Could not parse rubygems version constraint: >= %s: %v", dep.Version, err)
-		}
-		v, err := semver.NewVersion(currVersion)
-		if err != nil {
-			return fmt.Errorf("Could not parse rubygems current version: %s: %v", currVersion, err)
-		}
-		if c.Check(v) {
-			return nil
-		}
 	}
+
+	currVersion = strings.TrimSpace(currVersion)
+	c, err := semver.NewConstraint(fmt.Sprintf(">= %s", dep.Version))
+	if err != nil {
+		return fmt.Errorf("Could not parse rubygems version constraint: >= %s: %v", dep.Version, err)
+	}
+	v, err := semver.NewVersion(currVersion)
+	if err != nil {
+		return fmt.Errorf("Could not parse rubygems current version: %s: %v", currVersion, err)
+	}
+	if c.Check(v) {
+		return nil
+	}
+
+	s.Log.BeginStep("Update rubygems from %s to %s", currVersion, dep.Version)
 
 	if err := s.Manifest.FetchDependency(dep, gemPath); err != nil {
 		return err
