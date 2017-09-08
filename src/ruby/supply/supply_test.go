@@ -564,21 +564,20 @@ var _ = Describe("Supply", func() {
 		})
 	})
 
-	FDescribe("UpdateRubygems", func() {
+	Describe("UpdateRubygems", func() {
 		BeforeEach(func() {
 			mockManifest.EXPECT().AllDependencyVersions("rubygems").AnyTimes().Return([]string{"2.6.13"})
 		})
 		Context("gem version is less than 2.6.13", func() {
 			BeforeEach(func() {
 				mockCommand.EXPECT().Output(gomock.Any(), "gem", "--version").AnyTimes().Return("2.6.12\n", nil)
-				mockVersions.EXPECT().VersionConstraint("2.6.12", ">= 2.6.13").AnyTimes().Return(true, nil)
+				mockVersions.EXPECT().VersionConstraint("2.6.12", ">= 2.6.13").AnyTimes().Return(false, nil)
 			})
 
 			It("updates rubygems", func() {
-				mockManifest.EXPECT().InstallDependency(gomock.Any(), gomock.Any()).Do(func(dep libbuildpack.Dependency, path string) {
+				mockManifest.EXPECT().InstallDependency(gomock.Any(), gomock.Any()).Do(func(dep libbuildpack.Dependency, _ string) {
 					Expect(dep.Name).To(Equal("rubygems"))
 					Expect(dep.Version).To(Equal("2.6.13"))
-					Expect(path).To(Equal("fred"))
 				})
 				mockCommand.EXPECT().Output(gomock.Any(), "ruby", "setup.rb")
 
