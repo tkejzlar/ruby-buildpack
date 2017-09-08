@@ -258,6 +258,24 @@ func (_mr *MockVersionsMockRecorder) HasGemVersion(arg0 interface{}, arg1 ...int
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "HasGemVersion", _s...)
 }
 
+// VersionConstraint mocks base method
+func (_m *MockVersions) VersionConstraint(version string, constraints ...string) (bool, error) {
+	_s := []interface{}{version}
+	for _, _x := range constraints {
+		_s = append(_s, _x)
+	}
+	ret := _m.ctrl.Call(_m, "VersionConstraint", _s...)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VersionConstraint indicates an expected call of VersionConstraint
+func (_mr *MockVersionsMockRecorder) VersionConstraint(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+	_s := append([]interface{}{arg0}, arg1...)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "VersionConstraint", _s...)
+}
+
 // HasWindowsGemfileLock mocks base method
 func (_m *MockVersions) HasWindowsGemfileLock() (bool, error) {
 	ret := _m.ctrl.Call(_m, "HasWindowsGemfileLock")

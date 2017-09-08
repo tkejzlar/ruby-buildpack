@@ -6,7 +6,6 @@ package versions_test
 import (
 	libbuildpack "github.com/cloudfoundry/libbuildpack"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
 // MockManifest is a mock of Manifest interface
@@ -41,7 +40,7 @@ func (_m *MockManifest) AllDependencyVersions(_param0 string) []string {
 
 // AllDependencyVersions indicates an expected call of AllDependencyVersions
 func (_mr *MockManifestMockRecorder) AllDependencyVersions(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "AllDependencyVersions", reflect.TypeOf((*MockManifest)(nil).AllDependencyVersions), arg0)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AllDependencyVersions", arg0)
 }
 
 // DefaultVersion mocks base method
@@ -54,5 +53,5 @@ func (_m *MockManifest) DefaultVersion(_param0 string) (libbuildpack.Dependency,
 
 // DefaultVersion indicates an expected call of DefaultVersion
 func (_mr *MockManifestMockRecorder) DefaultVersion(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCallWithMethodType(_mr.mock, "DefaultVersion", reflect.TypeOf((*MockManifest)(nil).DefaultVersion), arg0)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "DefaultVersion", arg0)
 }
