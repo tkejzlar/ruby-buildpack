@@ -28,7 +28,6 @@ type Manifest interface {
 	InstallDependency(libbuildpack.Dependency, string) error
 	InstallOnlyVersion(string, string) error
 	DefaultVersion(string) (libbuildpack.Dependency, error)
-	FetchDependency(dep libbuildpack.Dependency, outputFile string) error
 }
 type Versions interface {
 	Engine() (string, error)
