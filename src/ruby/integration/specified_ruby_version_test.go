@@ -18,7 +18,7 @@ var _ = Describe("CF Ruby Buildpack", func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "specified_ruby_version"))
 	})
 
-	FIt("", func() {
+	It("", func() {
 		PushAppAndConfirm(app)
 
 		By("uses the specified ruby version", func() {
