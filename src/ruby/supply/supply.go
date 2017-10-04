@@ -57,15 +57,16 @@ type Cache interface {
 }
 
 type Supplier struct {
-	Stager          Stager
-	Manifest        Manifest
-	Log             *libbuildpack.Logger
-	Versions        Versions
-	Cache           Cache
-	Command         Command
-	cachedNeedsNode bool
-	needsNode       bool
-	appHasGemfile   bool
+	Stager            Stager
+	Manifest          Manifest
+	Log               *libbuildpack.Logger
+	Versions          Versions
+	Cache             Cache
+	Command           Command
+	cachedNeedsNode   bool
+	needsNode         bool
+	appHasGemfile     bool
+	appHasGemfileLock bool
 }
 
 func Run(s *Supplier) error {
@@ -176,10 +177,17 @@ func Run(s *Supplier) error {
 
 func (s *Supplier) Setup() error {
 	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile()); err != nil {
-		return fmt.Errorf("Unable to determine if gemfile exists: %v", err)
+		return fmt.Errorf("Unable to determine if Gemfile exists: %v", err)
 	} else {
 		s.appHasGemfile = exists
 	}
+
+	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile() + ".lock"); err != nil {
+		return fmt.Errorf("Unable to determine if Gemfile.lock exists: %v", err)
+	} else {
+		s.appHasGemfileLock = exists
+	}
+
 	return nil
 }
 
@@ -669,7 +677,7 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 bundle config WITHOUT "%s" > /dev/null
 `, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, os.Getenv("BUNDLE_WITHOUT"))
 
-	if s.appHasGemfile {
+	if s.appHasGemfile && s.appHasGemfileLock {
 		hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
 		if err != nil {
 			return fmt.Errorf("Could not determine rails version: %v", err)
