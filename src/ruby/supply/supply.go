@@ -3,7 +3,6 @@ package supply
 import (
 	"bytes"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -66,6 +65,7 @@ type Supplier struct {
 	Command         Command
 	cachedNeedsNode bool
 	needsNode       bool
+	appHasGemfile   bool
 }
 
 func Run(s *Supplier) error {
@@ -73,13 +73,13 @@ func Run(s *Supplier) error {
 
 	_ = s.Command.Execute(s.Stager.BuildDir(), ioutil.Discard, ioutil.Discard, "touch", "/tmp/checkpoint")
 
-	if err := s.AssetGemfileLockExists(); err != nil {
-		s.Log.Error(err.Error())
-		return err
-	}
-
 	if checksum, err := s.CalcChecksum(); err == nil {
 		s.Log.Debug("BuildDir Checksum Before Supply: %s", checksum)
+	}
+
+	if err := s.Setup(); err != nil {
+		s.Log.Error("Error during setup: %v", err)
+		return err
 	}
 
 	if err := s.Cache.Restore(); err != nil {
@@ -99,7 +99,7 @@ func Run(s *Supplier) error {
 
 	engine, rubyVersion, err := s.DetermineRuby()
 	if err != nil {
-		s.Log.Error(err.Error())
+		s.Log.Error("Unable to determine ruby: %s", err.Error())
 		return err
 	}
 
@@ -174,16 +174,24 @@ func Run(s *Supplier) error {
 	return nil
 }
 
-func (s *Supplier) AssetGemfileLockExists() error {
-	if exists, err := libbuildpack.FileExists(filepath.Join(s.Stager.BuildDir(), "Gemfile.lock")); err != nil {
-		return err
-	} else if !exists {
-		return errors.New("Gemfile.lock required")
+func (s *Supplier) Setup() error {
+	if exists, err := libbuildpack.FileExists(s.Versions.Gemfile()); err != nil {
+		return fmt.Errorf("Unable to determine if gemfile exists: %v", err)
+	} else {
+		s.appHasGemfile = exists
 	}
 	return nil
 }
 
 func (s *Supplier) DetermineRuby() (string, string, error) {
+	if !s.appHasGemfile {
+		dep, err := s.Manifest.DefaultVersion("ruby")
+		if err != nil {
+			return "", "", fmt.Errorf("Unable to determine default ruby version: %v", err)
+		}
+		return "ruby", dep.Version, nil
+	}
+
 	engine, err := s.Versions.Engine()
 	if err != nil {
 		return "", "", fmt.Errorf("Unable to determine ruby engine: %v", err)
@@ -469,6 +477,10 @@ func (s *Supplier) copyDirToTemp(dir string) (string, error) {
 }
 
 func (s *Supplier) InstallGems() error {
+	if !s.appHasGemfile {
+		return nil
+	}
+
 	s.warnBundleConfig()
 	s.warnWindowsGemfile()
 
@@ -657,19 +669,21 @@ bundle config PATH "$DEPS_DIR/%s/vendor_bundle" > /dev/null
 bundle config WITHOUT "%s" > /dev/null
 `, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, depsIdx, depsIdx, engine, rubyEngineVersion, depsIdx, os.Getenv("BUNDLE_WITHOUT"))
 
-	hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
-	if err != nil {
-		return err
-	}
-	if hasRails41 {
-		metadata := s.Cache.Metadata()
-		if metadata.SecretKeyBase == "" {
-			metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
-			if err != nil {
-				return fmt.Errorf("Running 'rake secret'", err)
-			}
+	if s.appHasGemfile {
+		hasRails41, err := s.Versions.HasGemVersion("rails", ">=4.1.0.beta1")
+		if err != nil {
+			return fmt.Errorf("Could not determine rails version: %v", err)
 		}
-		scriptContents += fmt.Sprintf("\nexport SECRET_KEY_BASE=${SECRET_KEY_BASE:-%s}\n", metadata.SecretKeyBase)
+		if hasRails41 {
+			metadata := s.Cache.Metadata()
+			if metadata.SecretKeyBase == "" {
+				metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
+				if err != nil {
+					return fmt.Errorf("Running 'rake secret'", err)
+				}
+			}
+			scriptContents += fmt.Sprintf("\nexport SECRET_KEY_BASE=${SECRET_KEY_BASE:-%s}\n", metadata.SecretKeyBase)
+		}
 	}
 
 	return s.Stager.WriteProfileD("ruby.sh", scriptContents)
