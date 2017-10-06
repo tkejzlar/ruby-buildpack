@@ -27,10 +27,10 @@ var _ = Describe("App with No Gemfile", func() {
 		BeforeEach(func() {
 			app.Buildpacks = []string{"ruby_buildpack"}
 		})
-		FIt("fails in finalize", func() {
+		It("fails in finalize", func() {
 			Expect(app.Push()).ToNot(Succeed())
 			Expect(app.ConfirmBuildpack(buildpackVersion)).To(Succeed())
-			Expect(app.Stdout.String()).To(ContainSubstring("**ERROR** Gemfile.lock required"))
+			Expect(app.Stdout.String()).To(ContainSubstring("Gemfile.lock required"))
 		})
 	})
 
@@ -43,7 +43,8 @@ var _ = Describe("App with No Gemfile", func() {
 			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby"))
 
 			By("running with the supplied ruby version", func() {
-				Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: "))
+				defaultRubyVersion := DefaultVersion("ruby")
+				Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: " + defaultRubyVersion))
 			})
 		})
 	})
