@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("App with No Gemfile", func() {
+var _ = Describe("App with No Gemfile", func() {
 	var app *cutlass.App
 
 	AfterEach(func() {
@@ -23,16 +23,14 @@ var _ = FDescribe("App with No Gemfile", func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "no_gemfile"))
 	})
 
-	// It("uses the version of ruby specified in Gemfile-APP", func() {
-	// 	PushAppAndConfirm(app)
-	// 	Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby 2.2.8"))
-	// })
-
 	Context("Single/Final buildpack", func() {
 		BeforeEach(func() {
 			app.Buildpacks = []string{"ruby_buildpack"}
 		})
-		It("fails in finalize", func() {
+		FIt("fails in finalize", func() {
+			Expect(app.Push()).ToNot(Succeed())
+			Expect(app.ConfirmBuildpack(buildpackVersion)).To(Succeed())
+			Expect(app.Stdout.String()).To(ContainSubstring("**ERROR** Gemfile.lock required"))
 		})
 	})
 
@@ -41,6 +39,12 @@ var _ = FDescribe("App with No Gemfile", func() {
 			app.Buildpacks = []string{"ruby_buildpack", "binary_buildpack"}
 		})
 		It("deploys", func() {
+			PushAppAndConfirm(app)
+			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby"))
+
+			By("running with the supplied ruby version", func() {
+				Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: "))
+			})
 		})
 	})
 })
