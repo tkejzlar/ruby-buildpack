@@ -1,11 +1,10 @@
 package main
 
 import (
-
-	// _ "ruby/hooks"
 	"os"
 	"path/filepath"
 	"ruby/cache"
+	_ "ruby/hooks"
 	"ruby/supply"
 	"ruby/versions"
 	"time"

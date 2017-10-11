@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"ruby/finalize"
+	_ "ruby/hooks"
 	"ruby/versions"
-	// _ "ruby/hooks"
 	"time"
 
 	"github.com/cloudfoundry/libbuildpack"
