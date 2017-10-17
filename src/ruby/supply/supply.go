@@ -347,7 +347,7 @@ func (s *Supplier) InstallJVM() error {
 	}
 
 	jvmInstallDir := filepath.Join(s.Stager.DepDir(), "jvm")
-	if err := s.Manifest.InstallOnlyVersion("openjdk1.8-latest", jvmInstallDir); err != nil {
+	if err := s.Manifest.InstallOnlyVersion("openjdk", jvmInstallDir); err != nil {
 		return err
 	}
 	if err := s.Stager.LinkDirectoryInDepDir(filepath.Join(jvmInstallDir, "bin"), "bin"); err != nil {

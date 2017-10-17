@@ -31,10 +31,10 @@ dependency_deprecation_dates:
   date: 2017-04-01
   link: https://www.ruby-lang.org/en/news/2017/04/01/support-of-ruby-2-1-has-ended/
 dependencies:
-- name: openjdk1.8-latest
-  version: 1.8.0
-  uri: https://buildpacks.cloudfoundry.org/dependencies/manual-binaries/jruby/openjdk-1.8.0_144-803337cc.tar.gz
-  md5: 803337ccdaabcbb935eb983e5322f3f1
+- name: openjdk
+  version: 9.181.0
+  uri: https://buildpacks.cloudfoundry.org/dependencies/manual-binaries/jruby/openjdk-9.181.0-abaf2383.tar.gz
+  md5: abaf23839ea49bef70aa6dc605171885
   cf_stacks:
   - cflinuxfs2
 - name: rubygems

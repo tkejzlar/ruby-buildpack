@@ -1,23 +1,5 @@
 ---
 language: ruby
-
-url_to_dependency_map:
-  - match: ruby-(.*?)-jruby-(.*?)\.tgz
-    name: jruby
-    version: ruby-$1-jruby-$2
-  - match: ruby-(\d+\.\d+\.\d+)
-    name: ruby
-    version: $1
-  - match: libyaml-(\d+\.\d+\.\d+)
-    name: libyaml
-    version: $1
-  - match: bundler-(\d+\.\d+\.\d+)
-    name: bundler
-    version: $1
-  - match: openjdk1.8-latest
-    name: openjdk1.8-latest
-    version: 1.8.0_91
-
 dependencies:
 - name: bundler
   version: 1.13.6
@@ -25,10 +7,10 @@ dependencies:
   md5: ea2e72dcd3f1d74d4448ffc340bc5046
   cf_stacks:
   - cflinuxfs2
-- name: openjdk1.8-latest
-  version: 1.8.0_111
-  uri: https://java-buildpack.cloudfoundry.org/openjdk/trusty/x86_64/openjdk-1.8.0_111.tar.gz
-  md5: c5228311f1a6a6d7874535eebba7b466
+- name: openjdk
+  version: 9.181.0
+  uri: https://buildpacks.cloudfoundry.org/dependencies/manual-binaries/jruby/openjdk-9.181.0-abaf2383.tar.gz
+  md5: abaf23839ea49bef70aa6dc605171885
   cf_stacks:
   - cflinuxfs2
 - name: ruby
@@ -103,19 +85,18 @@ dependencies:
   md5: e1aa7791788efe795720985360f43e5b
   cf_stacks:
   - cflinuxfs2
-
-exclude_files:
-  - .git/
-  - .gitignore
-  - .gitmodules
-  - repos/
-  - spec/
-  - cf_spec/
-  - log/
-  - test/
-  - cf.Gemfile
-  - cf.Gemfile.lock
-  - bin/package
-  - buildpack-packager/
-  - ruby_buildpack-*v*.zip
-  - cf_build/
+include_files:
+- CHANGELOG
+- CONTRIBUTING.md
+- ISSUE_TEMPLATE
+- LICENSE
+- NOTICE
+- PULL_REQUEST_TEMPLATE
+- README.md
+- VERSION
+- bin/compile
+- bin/detect
+- bin/finalize
+- bin/release
+- bin/supply
+- manifest.yml
