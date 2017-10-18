@@ -38,6 +38,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bpDir, err := cutlass.FindRoot()
 	Expect(err).NotTo(HaveOccurred())
 
+	// Build cached buildpack
 	cachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Cached, bpVersion, true)
 	Expect(err).NotTo(HaveOccurred())
 	buildpacks.CachedFile = cachedBuildpack.File
@@ -51,6 +52,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	buildpacks.Cached = buildpacks.Cached + "_buildpack"
 	buildpacks.Unbuilt = buildpacks.Unbuilt + "_buildpack"
 
+	// Marshall for run all nodes
 	data, err := json.Marshal(buildpacks)
 	Expect(err).NotTo(HaveOccurred())
 
