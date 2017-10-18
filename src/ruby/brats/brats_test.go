@@ -1,6 +1,7 @@
 package brats_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +32,7 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 	})
 
-	Context("deploying an app with an updated version of the same buildpack", func() {
+	Describe("deploying an app with an updated version of the same buildpack", func() {
 		var bpName string
 		BeforeEach(func() {
 			bpName = "brats_ruby_changing_" + cutlass.RandStringRunes(6)
@@ -58,5 +59,58 @@ var _ = Describe("Ruby buildpack", func() {
 			PushApp(app)
 			Expect(app.Stdout.String()).To(ContainSubstring("buildpack version changed from"))
 		})
+	})
+
+	FDescribe("For all supported Ruby versions", func() {
+		// FIXME What about jruby?
+		// manifest := struct {
+		// 	Dependencies []struct {
+		// 		Name    string `json:"name"`
+		// 		Version string `json:"version"`
+		// 	} `json:"dependencies"`
+		// }{}
+		// bpDir, err := cutlass.FindRoot()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// if err := libbuildpack.NewYAML().Load(filepath.Join(bpDir, "manifest.yml"), &manifest); err != nil {
+		// 	panic(err)
+		// }
+		// rubyVersions := []string{}
+		// for _, d := range manifest.Dependencies {
+		// 	if d.Name == "ruby" {
+		// 		rubyVersions = append(rubyVersions, d.Version)
+		// 	}
+		// }
+		bpDir, err := cutlass.FindRoot()
+		if err != nil {
+			panic(err)
+		}
+		manifest, err := libbuildpack.NewManifest(bpDir, nil, nil)
+		rubyVersions := manifest.AllDependencyVersions("ruby")
+
+		for _, v := range rubyVersions {
+			rubyVersion := v
+			It("Ruby version "+rubyVersion, func() {
+				dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "simple_brats"))
+				Expect(err).ToNot(HaveOccurred())
+				data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
+				Expect(err).ToNot(HaveOccurred())
+				data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
+				Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
+
+				app = cutlass.New(dir)
+				app.Buildpacks = []string{buildpacks.Cached}
+				PushApp(app)
+
+				By("installs the correct version of Ruby", func() {
+					Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby " + rubyVersion))
+					Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: " + rubyVersion))
+				})
+				By("runs a simple webserver", func() {
+					Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
+				})
+			})
+		}
 	})
 })
