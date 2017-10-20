@@ -2,19 +2,18 @@ package cutlass
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/tidwall/gjson"
+	"github.com/cloudfoundry/libbuildpack/cfcluster"
+	"github.com/cloudfoundry/libbuildpack/models"
 )
 
 var DefaultMemory string = ""
@@ -22,21 +21,24 @@ var DefaultDisk string = ""
 var Cached bool = false
 var DefaultStdoutStderr io.Writer = nil
 
-type cfConfig struct {
-	SpaceFields struct {
-		GUID string
-	}
+type CfCli interface {
+	ApiVersion() (string, error)
+
+	DeleteOrphanedRoutes() error
+	CreateBuildpack(name, file string) error
+	UpdateBuildpack(name, file string) error
+	DeleteBuildpack(name string) error
+	RunTask(name, command string) ([]byte, error)
+	RestartApp(name string) error
+	AppGUID(guid, name string) (string, error)
+	InstanceStates(guid string) ([]string, error)
+	PushApp(a models.App) error
+	GetUrl(a models.App, path string) (string, error)
+	Files(appName, path string) ([]string, error)
+	DestroyApp(name string) error
 }
-type cfApps struct {
-	Resources []struct {
-		Metadata struct {
-			GUID string `json:"guid"`
-		} `json:"metadata"`
-	} `json:"resources"`
-}
-type cfInstance struct {
-	State string `json:"state"`
-}
+
+var cfCli CfCli = cfcluster.New()
 
 type App struct {
 	Name       string
@@ -66,55 +68,23 @@ func New(fixture string) *App {
 }
 
 func ApiVersion() (string, error) {
-	cmd := exec.Command("cf", "curl", "/v2/info")
-	cmd.Stderr = DefaultStdoutStderr
-	bytes, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	var info struct {
-		ApiVersion string `json:"api_version"`
-	}
-	if err := json.Unmarshal(bytes, &info); err != nil {
-		return "", err
-	}
-	return info.ApiVersion, nil
+	return cfCli.ApiVersion()
 }
 
 func DeleteOrphanedRoutes() error {
-	command := exec.Command("cf", "delete-orphaned-routes", "-f")
-	command.Stdout = DefaultStdoutStderr
-	command.Stderr = DefaultStdoutStderr
-	if err := command.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cfCli.DeleteOrphanedRoutes()
 }
 
 func DeleteBuildpack(language string) error {
-	command := exec.Command("cf", "delete-buildpack", "-f", fmt.Sprintf("%s_buildpack", language))
-	if data, err := command.CombinedOutput(); err != nil {
-		fmt.Println(string(data))
-		return err
-	}
-	return nil
+	return cfCli.DeleteBuildpack(fmt.Sprintf("%s_buildpack", language))
 }
 
 func UpdateBuildpack(language, file string) error {
-	command := exec.Command("cf", "update-buildpack", fmt.Sprintf("%s_buildpack", language), "-p", file, "--enable")
-	if data, err := command.CombinedOutput(); err != nil {
-		fmt.Println(string(data))
-		return err
-	}
-	return nil
+	return cfCli.UpdateBuildpack(fmt.Sprintf("%s_buildpack", language), file)
 }
 
 func createBuildpack(language, file string) error {
-	command := exec.Command("cf", "create-buildpack", fmt.Sprintf("%s_buildpack", language), file, "100", "--enable")
-	if _, err := command.CombinedOutput(); err != nil {
-		return err
-	}
-	return nil
+	return cfCli.CreateBuildpack(fmt.Sprintf("%s_buildpack", language), file)
 }
 
 func CreateOrUpdateBuildpack(language, file string) error {
@@ -136,164 +106,39 @@ func (a *App) ConfirmBuildpack(version string) error {
 }
 
 func (a *App) RunTask(command string) ([]byte, error) {
-	cmd := exec.Command("cf", "run-task", a.Name, command)
-	cmd.Stderr = DefaultStdoutStderr
-	bytes, err := cmd.Output()
-	if err != nil {
-		return bytes, err
-	}
-	return bytes, nil
+	return cfCli.RunTask(a.Name, command)
 }
 
 func (a *App) Restart() error {
-	command := exec.Command("cf", "restart", a.Name)
-	command.Stdout = DefaultStdoutStderr
-	command.Stderr = DefaultStdoutStderr
-	if err := command.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cfCli.RestartApp(a.Name)
 }
 
 func (a *App) SetEnv(key, value string) {
 	a.env[key] = value
 }
 
-func (a *App) SpaceGUID() (string, error) {
-	cfHome := os.Getenv("CF_HOME")
-	if cfHome == "" {
-		cfHome = os.Getenv("HOME")
-	}
-	bytes, err := ioutil.ReadFile(filepath.Join(cfHome, ".cf", "config.json"))
-	if err != nil {
-		return "", err
-	}
-	var config cfConfig
-	if err := json.Unmarshal(bytes, &config); err != nil {
-		return "", err
-	}
-	return config.SpaceFields.GUID, nil
-}
-
 func (a *App) AppGUID() (string, error) {
 	if a.appGUID != "" {
 		return a.appGUID, nil
 	}
-	guid, err := a.SpaceGUID()
-	if err != nil {
-		return "", err
-	}
-	cmd := exec.Command("cf", "curl", "/v2/apps?q=space_guid:"+guid+"&q=name:"+a.Name)
-	cmd.Stderr = DefaultStdoutStderr
-	bytes, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	var apps cfApps
-	if err := json.Unmarshal(bytes, &apps); err != nil {
-		return "", err
-	}
-	if len(apps.Resources) != 1 {
-		return "", fmt.Errorf("Expected one app, found %d", len(apps.Resources))
-	}
-	a.appGUID = apps.Resources[0].Metadata.GUID
+	a.appGUID, err = cfCli.AppGUID(a.Name)
 	return a.appGUID, nil
 }
 
 func (a *App) InstanceStates() ([]string, error) {
-	guid, err := a.AppGUID()
-	if err != nil {
+	if guid, err := a.AppGUID(); err != nil {
 		return []string{}, err
+	} else {
+		return cfCli.InstanceStates(guid)
 	}
-	cmd := exec.Command("cf", "curl", "/v2/apps/"+guid+"/instances")
-	cmd.Stderr = DefaultStdoutStderr
-	bytes, err := cmd.Output()
-	if err != nil {
-		return []string{}, err
-	}
-	var data map[string]cfInstance
-	if err := json.Unmarshal(bytes, &data); err != nil {
-		return []string{}, err
-	}
-	var states []string
-	for _, value := range data {
-		states = append(states, value.State)
-	}
-	return states, nil
 }
 
 func (a *App) Push() error {
-	args := []string{"push", a.Name, "--no-start", "-p", a.Path}
-	if a.Stack != "" {
-		args = append(args, "-s", a.Stack)
-	}
-	if len(a.Buildpacks) == 1 {
-		args = append(args, "-b", a.Buildpacks[len(a.Buildpacks)-1])
-	}
-	if _, err := os.Stat(filepath.Join(a.Path, "manifest.yml")); err == nil {
-		args = append(args, "-f", filepath.Join(a.Path, "manifest.yml"))
-	}
-	if a.Memory != "" {
-		args = append(args, "-m", a.Memory)
-	}
-	if a.Disk != "" {
-		args = append(args, "-k", a.Disk)
-	}
-	command := exec.Command("cf", args...)
-	command.Stdout = DefaultStdoutStderr
-	command.Stderr = DefaultStdoutStderr
-	if err := command.Run(); err != nil {
-		return err
-	}
-
-	for k, v := range a.env {
-		command := exec.Command("cf", "set-env", a.Name, k, v)
-		command.Stdout = DefaultStdoutStderr
-		command.Stderr = DefaultStdoutStderr
-		if err := command.Run(); err != nil {
-			return err
-		}
-	}
-
-	a.logCmd = exec.Command("cf", "logs", a.Name)
-	a.logCmd.Stderr = DefaultStdoutStderr
-	a.Stdout = bytes.NewBuffer(nil)
-	a.logCmd.Stdout = a.Stdout
-	if err := a.logCmd.Start(); err != nil {
-		return err
-	}
-
-	if len(a.Buildpacks) > 1 {
-		args = []string{"v3-push", a.Name, "-p", a.Path}
-		for _, buildpack := range a.Buildpacks {
-			args = append(args, "-b", buildpack)
-		}
-	} else {
-		args = []string{"start", a.Name}
-	}
-	command = exec.Command("cf", args...)
-	command.Stdout = DefaultStdoutStderr
-	command.Stderr = DefaultStdoutStderr
-	if err := command.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cfCli.PushApp(a)
 }
 
 func (a *App) GetUrl(path string) (string, error) {
-	guid, err := a.AppGUID()
-	if err != nil {
-		return "", err
-	}
-	cmd := exec.Command("cf", "curl", "/v2/apps/"+guid+"/summary")
-	cmd.Stderr = DefaultStdoutStderr
-	data, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	host := gjson.Get(string(data), "routes.0.host").String()
-	domain := gjson.Get(string(data), "routes.0.domain.name").String()
-	return fmt.Sprintf("http://%s.%s%s", host, domain, path), nil
+	return cfCli.GetUrl(a, path)
 }
 
 func (a *App) Get(path string, headers map[string]string) (string, map[string][]string, error) {
@@ -340,13 +185,7 @@ func (a *App) GetBody(path string) (string, error) {
 }
 
 func (a *App) Files(path string) ([]string, error) {
-	cmd := exec.Command("cf", "ssh", a.Name, "-c", "find "+path)
-	cmd.Stderr = DefaultStdoutStderr
-	output, err := cmd.Output()
-	if err != nil {
-		return []string{}, err
-	}
-	return strings.Split(string(output), "\n"), nil
+	return cfCli.Files(a.Name, path)
 }
 
 func (a *App) Destroy() error {
@@ -356,10 +195,7 @@ func (a *App) Destroy() error {
 		}
 	}
 
-	command := exec.Command("cf", "delete", "-f", a.Name)
-	command.Stdout = DefaultStdoutStderr
-	command.Stderr = DefaultStdoutStderr
-	return command.Run()
+	return cfCli.DestroyApp(a.Name)
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
