@@ -5,9 +5,11 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/cloudfoundry/libbuildpack"
 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"golang.org/x/crypto/bcrypt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -62,32 +64,13 @@ var _ = Describe("Ruby buildpack", func() {
 	})
 
 	FDescribe("For all supported Ruby versions", func() {
-		// FIXME What about jruby?
-		// manifest := struct {
-		// 	Dependencies []struct {
-		// 		Name    string `json:"name"`
-		// 		Version string `json:"version"`
-		// 	} `json:"dependencies"`
-		// }{}
-		// bpDir, err := cutlass.FindRoot()
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// if err := libbuildpack.NewYAML().Load(filepath.Join(bpDir, "manifest.yml"), &manifest); err != nil {
-		// 	panic(err)
-		// }
-		// rubyVersions := []string{}
-		// for _, d := range manifest.Dependencies {
-		// 	if d.Name == "ruby" {
-		// 		rubyVersions = append(rubyVersions, d.Version)
-		// 	}
-		// }
 		bpDir, err := cutlass.FindRoot()
 		if err != nil {
 			panic(err)
 		}
-		manifest, err := libbuildpack.NewManifest(bpDir, nil, nil)
+		manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
 		rubyVersions := manifest.AllDependencyVersions("ruby")
+		rubyVersions = rubyVersions[:2] // FIXME remove this line (debug only)
 
 		for _, v := range rubyVersions {
 			rubyVersion := v
@@ -105,10 +88,30 @@ var _ = Describe("Ruby buildpack", func() {
 
 				By("installs the correct version of Ruby", func() {
 					Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby " + rubyVersion))
-					Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: " + rubyVersion))
+					Expect(app.GetBody("/version")).To(ContainSubstring(rubyVersion))
 				})
 				By("runs a simple webserver", func() {
-					Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
+					Expect(app.GetBody("/")).To(ContainSubstring("Hello, World"))
+				})
+				By("parses XML with nokogiri", func() {
+					Expect(app.GetBody("/nokogiri")).To(ContainSubstring("Hello, World"))
+				})
+				By("supports EventMachine", func() {
+					Expect(app.GetBody("/em")).To(ContainSubstring("Hello, EventMachine"))
+				})
+				By("encrypts with bcrypt", func() {
+					hashedPassword, err := app.GetBody("/bcrypt")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte("Hello, bcrypt"))).To(BeTrue())
+				})
+				By("supports bson", func() {
+					Expect(app.GetBody("/bson")).To(ContainSubstring("00040000"))
+				})
+				By("supports postgres", func() {
+					Expect(app.GetBody("/pg")).To(ContainSubstring("could not connect to server: No such file or directory"))
+				})
+				By("supports mysql2", func() {
+					Expect(app.GetBody("/mysql2")).To(ContainSubstring("Unknown MySQL server host 'testing'"))
 				})
 			})
 		}
