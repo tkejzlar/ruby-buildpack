@@ -1,8 +1,8 @@
 package brats_test
 
 import (
-	"bytes"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -63,26 +63,21 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 	})
 
-	FDescribe("For all supported Ruby versions", func() {
+	Describe("For all supported Ruby versions", func() {
 		bpDir, err := cutlass.FindRoot()
 		if err != nil {
 			panic(err)
 		}
 		manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
 		rubyVersions := manifest.AllDependencyVersions("ruby")
-		rubyVersions = rubyVersions[:2] // FIXME remove this line (debug only)
+		var appDir string
+		AfterEach(func() { os.RemoveAll(appDir) })
 
 		for _, v := range rubyVersions {
 			rubyVersion := v
 			It("Ruby version "+rubyVersion, func() {
-				dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "simple_brats"))
-				Expect(err).ToNot(HaveOccurred())
-				data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
-				Expect(err).ToNot(HaveOccurred())
-				data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
-				Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
-
-				app = cutlass.New(dir)
+				appDir = CopySimpleBrats(rubyVersion)
+				app = cutlass.New(appDir)
 				app.Buildpacks = []string{buildpacks.Cached}
 				PushApp(app)
 
@@ -102,6 +97,7 @@ var _ = Describe("Ruby buildpack", func() {
 				By("encrypts with bcrypt", func() {
 					hashedPassword, err := app.GetBody("/bcrypt")
 					Expect(err).ToNot(HaveOccurred())
+					Expect(hashedPassword).ToNot(Equal(""))
 					Expect(bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte("Hello, bcrypt"))).To(BeTrue())
 				})
 				By("supports bson", func() {
@@ -115,5 +111,67 @@ var _ = Describe("Ruby buildpack", func() {
 				})
 			})
 		}
+	})
+
+	PDescribe("staging with ruby buildpack that sets EOL on dependency", func() {
+		Context("using an uncached buildpack", func() {
+			It("warns about end of life", func() {})
+		})
+		Context("using a cached buildpack", func() {
+			It("warns about end of life", func() {})
+		})
+	})
+
+	Describe("staging with a version of ruby that is not the latest patch release in the manifest", func() {
+		var appDir string
+		BeforeEach(func() {
+			appDir = CopySimpleBrats("2.4.1") // FIXME determine from manifest
+			app = cutlass.New(appDir)
+			app.Buildpacks = []string{buildpacks.Cached}
+			PushApp(app)
+		})
+		AfterEach(func() { os.RemoveAll(appDir) })
+
+		It("logs a warning that tells the user to upgrade the dependency", func() {
+			Expect(app.Stdout.String()).To(MatchRegexp("WARNING.*A newer version of ruby is available in this buildpack"))
+		})
+	})
+
+	PDescribe("staging with custom buildpack that uses credentials in manifest dependency uris", func() {
+		Context("using an uncached buildpack", func() {
+			It("does not include credentials in logged dependency uris", func() {})
+		})
+		Context("using a cached buildpack", func() {
+			It("does not include credentials in logged dependency file paths", func() {})
+		})
+	})
+
+	Describe("deploying an app that has an executable .profile script", func() {
+		BeforeEach(func() {
+			manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
+			dep, err := manifest.DefaultVersion("ruby")
+			Expect(err).ToNot(HaveOccurred())
+
+			appDir := CopySimpleBrats(dep.Version)
+			AddDotProfileScriptToApp(appDir)
+			app = cutlass.New(appDir)
+			app.Buildpacks = []string{buildpacks.Cached}
+			PushApp(app)
+		})
+		AfterEach(func() { os.RemoveAll(app.Path) })
+
+		It("executes the .profile script", func() {
+			Expect(app.Stdout.String()).To(ContainSubstring("PROFILE_SCRIPT_IS_PRESENT_AND_RAN"))
+		})
+		It("does not let me view the .profile script", func() {
+			_, headers, err := app.Get("/.profile", map[string]string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(headers).To(HaveKeyWithValue("StatusCode", []string{"404"}))
+		})
+	})
+
+	PDescribe("deploying an app that has sensitive environment variables", func() {
+		It("will not write credentials to the app droplet", func() {
+		})
 	})
 })
