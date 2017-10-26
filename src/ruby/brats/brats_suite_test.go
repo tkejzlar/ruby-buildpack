@@ -1,8 +1,10 @@
 package brats_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -94,4 +96,21 @@ func DestroyApp(app *cutlass.App) *cutlass.App {
 		app.Destroy()
 	}
 	return nil
+}
+
+func CopySimpleBrats(rubyVersion string) string {
+	dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "simple_brats"))
+	Expect(err).ToNot(HaveOccurred())
+	data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
+	Expect(err).ToNot(HaveOccurred())
+	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
+	Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
+	return dir
+}
+
+func AddDotProfileScriptToApp(dir string) {
+	profilePath := filepath.Join(dir, ".profile")
+	Expect(ioutil.WriteFile(profilePath, []byte(`#!/usr/bin/env bash
+echo PROFILE_SCRIPT_IS_PRESENT_AND_RAN
+`), 0755)).To(Succeed())
 }
