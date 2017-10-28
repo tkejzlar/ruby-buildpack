@@ -6,7 +6,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,9 +19,11 @@ import (
 
 var bpDir string
 var buildpacks struct {
-	Unbuilt    string
-	Cached     string
-	CachedFile string
+	BpVersion    string
+	Cached       string
+	CachedFile   string
+	Uncached     string
+	UncachedFile string
 }
 
 func init() {
@@ -33,26 +34,25 @@ func init() {
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	// Run once
-	bpVersion := cutlass.RandStringRunes(6)
-	buildpacks.Cached = "brats_ruby_cached_" + bpVersion
-	buildpacks.Unbuilt = "brats_ruby_unbuilt_" + bpVersion
+	buildpacks.BpVersion = cutlass.RandStringRunes(6)
+	buildpacks.Cached = "brats_ruby_cached_" + buildpacks.BpVersion
+	buildpacks.Uncached = "brats_ruby_uncached_" + buildpacks.BpVersion
 
-	bpDir, err := cutlass.FindRoot()
+	var err error
+	bpDir, err = cutlass.FindRoot()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Build cached buildpack
-	cachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Cached, bpVersion, true)
+	cachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Cached, buildpacks.BpVersion, true)
 	Expect(err).NotTo(HaveOccurred())
 	buildpacks.CachedFile = cachedBuildpack.File
 
-	cmd := exec.Command("git", "archive", "-o", filepath.Join("/tmp", buildpacks.Unbuilt+".zip"), "HEAD")
-	cmd.Dir = bpDir
-	Expect(cmd.Run()).To(Succeed())
-	Expect(cutlass.CreateOrUpdateBuildpack(buildpacks.Unbuilt, filepath.Join("/tmp", buildpacks.Unbuilt+".zip"))).To(Succeed())
-	Expect(os.Remove(filepath.Join("/tmp", buildpacks.Unbuilt+".zip"))).To(Succeed())
+	uncachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Uncached, buildpacks.BpVersion, false)
+	Expect(err).NotTo(HaveOccurred())
+	buildpacks.UncachedFile = uncachedBuildpack.File
 
 	buildpacks.Cached = buildpacks.Cached + "_buildpack"
-	buildpacks.Unbuilt = buildpacks.Unbuilt + "_buildpack"
+	buildpacks.Uncached = buildpacks.Uncached + "_buildpack"
 
 	// Marshall for run all nodes
 	data, err := json.Marshal(buildpacks)
@@ -76,8 +76,8 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	// Run once
 	Expect(cutlass.DeleteOrphanedRoutes()).To(Succeed())
-	Expect(cutlass.DeleteBuildpack(strings.Replace(buildpacks.Unbuilt, "_buildpack", "", 1))).To(Succeed())
 	Expect(cutlass.DeleteBuildpack(strings.Replace(buildpacks.Cached, "_buildpack", "", 1))).To(Succeed())
+	Expect(cutlass.DeleteBuildpack(strings.Replace(buildpacks.Uncached, "_buildpack", "", 1))).To(Succeed())
 	Expect(os.Remove(buildpacks.CachedFile)).To(Succeed())
 })
 
