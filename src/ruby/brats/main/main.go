@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -64,10 +63,14 @@ func ModifyZipfile(path string, cb func(path string, r io.Reader) (io.Reader, er
 	return newfile.Name(), nil
 }
 
-func CopyBuildpack(path string) (string, error) {
+func CopyBuildpack(path string, cb func(*Manifest)) (string, error) {
 	return ModifyZipfile(path, func(path string, r io.Reader) (io.Reader, error) {
-		fmt.Println(path)
 		if path == "manifest.yml" {
+			if r, err := ChangeManifest(r, cb); err != nil {
+				return nil, err
+			} else {
+				return r, nil
+			}
 		}
 		return r, nil
 	})
@@ -97,7 +100,7 @@ type Manifest struct {
 	IncludeFiles []string `yaml:"include_files"`
 }
 
-func ChangeManifest(r io.Reader) (io.Reader, error) {
+func ChangeManifest(r io.Reader, cb func(*Manifest)) (io.Reader, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -108,9 +111,7 @@ func ChangeManifest(r io.Reader) (io.Reader, error) {
 		return nil, err
 	}
 
-	for _, date := range obj.DependencyDeprecationDates {
-		date.Date = "2008-12-01"
-	}
+	cb(&obj)
 
 	if data, err := yaml.Marshal(&obj); err != nil {
 		return nil, err
@@ -120,16 +121,24 @@ func ChangeManifest(r io.Reader) (io.Reader, error) {
 }
 
 func main() {
-	// bp, err := CopyBuildpack("/Users/dgodd/workspace/ruby-buildpack/ruby_buildpack-v1.7.4.zip")
-	// fmt.Println(bp, err)
+	bp, err := CopyBuildpack("/Users/dgodd/workspace/ruby-buildpack/ruby_buildpack-v1.7.4.zip", func(obj *Manifest) {
+		for _, date := range obj.DependencyDeprecationDates {
+			date.Date = "2008-12-01"
+		}
+	})
+	fmt.Println(bp, err)
 
-	f, err := os.Open("/Users/dgodd/workspace/ruby-buildpack/manifest.yml")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
+	// f, err := os.Open("/Users/dgodd/workspace/ruby-buildpack/manifest.yml")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer f.Close()
 
-	m, e1 := ChangeManifest(f)
-	m2, e2 := ioutil.ReadAll(m)
-	fmt.Println(string(m2), e1, e2)
+	// m, e1 := ChangeManifest(f, func(obj *Manifest) {
+	// 	for _, date := range obj.DependencyDeprecationDates {
+	// 		date.Date = "2008-12-01"
+	// 	}
+	// })
+	// m2, e2 := ioutil.ReadAll(m)
+	// fmt.Println(string(m2), e1, e2)
 }
