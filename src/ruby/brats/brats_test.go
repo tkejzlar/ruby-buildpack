@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"ruby/brats/helper"
 	"time"
 
 	"github.com/cloudfoundry/libbuildpack"
@@ -20,9 +21,20 @@ var _ = Describe("Ruby buildpack", func() {
 	AfterEach(func() { app = DestroyApp(app) })
 
 	Context("Unbuilt buildpack (eg github)", func() {
+		var bpName string
 		BeforeEach(func() {
+			bpName = "brats_ruby_unbuilt_" + buildpacks.BpVersion
+			cmd := exec.Command("git", "archive", "-o", filepath.Join("/tmp", bpName+".zip"), "HEAD")
+			cmd.Dir = bpDir
+			Expect(cmd.Run()).To(Succeed())
+			Expect(cutlass.CreateOrUpdateBuildpack(bpName, filepath.Join("/tmp", bpName+".zip"))).To(Succeed())
+			Expect(os.Remove(filepath.Join("/tmp", bpName+".zip"))).To(Succeed())
+
 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "no_dependencies"))
-			app.Buildpacks = []string{buildpacks.Unbuilt}
+			app.Buildpacks = []string{bpName}
+		})
+		AfterEach(func() {
+			Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
 		})
 
 		It("runs", func() {
@@ -113,12 +125,53 @@ var _ = Describe("Ruby buildpack", func() {
 		}
 	})
 
-	PDescribe("staging with ruby buildpack that sets EOL on dependency", func() {
-		Context("using an uncached buildpack", func() {
-			It("warns about end of life", func() {})
+	Describe("staging with ruby buildpack that sets EOL on dependency", func() {
+		var (
+			eolDate       string
+			buildpackFile string
+			bpName        string
+			appDir        string
+		)
+		JustBeforeEach(func() {
+			eolDate = time.Now().AddDate(0, 0, 10).Format("2006-01-02")
+			file, err := helper.CopyBuildpack(buildpackFile, func(m *helper.Manifest) {
+				for _, eol := range m.DependencyDeprecationDates {
+					if eol.Name == "ruby" {
+						eol.Date = eolDate
+					}
+				}
+			})
+			Expect(err).ToNot(HaveOccurred())
+			bpName = "brats_ruby_eol_" + cutlass.RandStringRunes(6)
+			Expect(cutlass.CreateOrUpdateBuildpack(bpName, file)).To(Succeed())
+			os.Remove(file)
+
+			appDir = CopySimpleBrats("~> 2.1.0")
+			app = cutlass.New(appDir)
+			app.Buildpacks = []string{bpName + "_buildpack"}
+			PushApp(app)
 		})
+		AfterEach(func() {
+			Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
+			Expect(os.RemoveAll(appDir)).To(Succeed())
+		})
+
+		Context("using an uncached buildpack", func() {
+			BeforeEach(func() {
+				buildpackFile = buildpacks.UncachedFile
+			})
+			It("warns about end of life", func() {
+				Expect(app.Stdout.String()).To(MatchRegexp("WARNING.*ruby 2.1.x will no longer be available in new buildpacks released after"))
+			})
+		})
+
 		Context("using a cached buildpack", func() {
-			It("warns about end of life", func() {})
+			BeforeEach(func() {
+				buildpackFile = buildpacks.CachedFile
+			})
+			It("warns about end of life", func() {
+				Expect(app.Stdout.String()).To(MatchRegexp("WARNING.*ruby 2.1.x will no longer be available in new buildpacks released after"))
+			})
 		})
 	})
 
