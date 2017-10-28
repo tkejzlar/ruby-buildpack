@@ -2,12 +2,16 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
-func ModifyZipfile(path string, func(path string, r io.Reader) (io.Reader, err)) (string, error) {
+func ModifyZipfile(path string, cb func(path string, r io.Reader) (io.Reader, error)) (string, error) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		return "", err
@@ -43,6 +47,12 @@ func ModifyZipfile(path string, func(path string, r io.Reader) (io.Reader, err))
 			if err != nil {
 				return "", err
 			}
+
+			rc, err := cb(f.Name, rc)
+			if err != nil {
+				return "", err
+			}
+
 			_, err = io.Copy(writer, rc)
 			if err != nil {
 				return "", err
@@ -55,10 +65,71 @@ func ModifyZipfile(path string, func(path string, r io.Reader) (io.Reader, err))
 }
 
 func CopyBuildpack(path string) (string, error) {
-	return ModifyZipfile(path, func(path string, r io.Reader) (io.Reader, err) 
+	return ModifyZipfile(path, func(path string, r io.Reader) (io.Reader, error) {
+		fmt.Println(path)
+		if path == "manifest.yml" {
+		}
+		return r, nil
+	})
+}
+
+type Manifest struct {
+	Language        string `yaml:"language"`
+	DefaultVersions []*struct {
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
+	} `yaml:"default_versions"`
+	PrePackage                 string `yaml:"pre_package"`
+	DependencyDeprecationDates []*struct {
+		VersionLine string `yaml:"version_line"`
+		Name        string `yaml:"name"`
+		Date        string `yaml:"date"`
+		Link        string `yaml:"link"`
+	} `yaml:"dependency_deprecation_dates"`
+	Dependencies []*struct {
+		Name     string   `yaml:"name"`
+		Version  string   `yaml:"version"`
+		URI      string   `yaml:"uri"`
+		Md5      string   `yaml:"md5,omitempty"`
+		Sha256   string   `yaml:"sha256,omitempty"`
+		CfStacks []string `yaml:"cf_stacks"`
+	} `yaml:"dependencies"`
+	IncludeFiles []string `yaml:"include_files"`
+}
+
+func ChangeManifest(r io.Reader) (io.Reader, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := Manifest{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		return nil, err
+	}
+
+	for _, date := range obj.DependencyDeprecationDates {
+		date.Date = "2008-12-01"
+	}
+
+	if data, err := yaml.Marshal(&obj); err != nil {
+		return nil, err
+	} else {
+		return bytes.NewReader(data), nil
+	}
 }
 
 func main() {
-	bp, err := CopyBuildpack("/home/pivotal/workspace/ruby-buildpack/ruby_buildpack-v1.7.4.zip")
-	fmt.Println(bp, err)
+	// bp, err := CopyBuildpack("/Users/dgodd/workspace/ruby-buildpack/ruby_buildpack-v1.7.4.zip")
+	// fmt.Println(bp, err)
+
+	f, err := os.Open("/Users/dgodd/workspace/ruby-buildpack/manifest.yml")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	m, e1 := ChangeManifest(f)
+	m2, e2 := ioutil.ReadAll(m)
+	fmt.Println(string(m2), e1, e2)
 }
