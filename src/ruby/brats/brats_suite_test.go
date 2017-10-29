@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,14 +44,25 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	bpDir, err = cutlass.FindRoot()
 	Expect(err).NotTo(HaveOccurred())
 
-	// Build cached buildpack
-	cachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Cached, buildpacks.BpVersion, true)
-	Expect(err).NotTo(HaveOccurred())
-	buildpacks.CachedFile = cachedBuildpack.File
-
-	uncachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Uncached, buildpacks.BpVersion, false)
-	Expect(err).NotTo(HaveOccurred())
-	buildpacks.UncachedFile = uncachedBuildpack.File
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		fmt.Fprintln(os.Stderr, "Start build cached buildpack")
+		cachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Cached, buildpacks.BpVersion, true)
+		Expect(err).NotTo(HaveOccurred())
+		buildpacks.CachedFile = cachedBuildpack.File
+		fmt.Fprintln(os.Stderr, "Finish cached buildpack")
+	}()
+	go func() {
+		defer wg.Done()
+		fmt.Fprintln(os.Stderr, "Start build uncached buildpack")
+		uncachedBuildpack, err := cutlass.PackageUniquelyVersionedBuildpackExtra(buildpacks.Uncached, buildpacks.BpVersion, false)
+		Expect(err).NotTo(HaveOccurred())
+		buildpacks.UncachedFile = uncachedBuildpack.File
+		fmt.Fprintln(os.Stderr, "Finish uncached buildpack")
+	}()
+	wg.Wait()
 
 	buildpacks.Cached = buildpacks.Cached + "_buildpack"
 	buildpacks.Uncached = buildpacks.Uncached + "_buildpack"
