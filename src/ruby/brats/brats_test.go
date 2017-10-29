@@ -2,6 +2,7 @@ package brats_test
 
 import (
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -190,12 +191,54 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 	})
 
-	PDescribe("staging with custom buildpack that uses credentials in manifest dependency uris", func() {
+	FDescribe("staging with custom buildpack that uses credentials in manifest dependency uris", func() {
+		var (
+			buildpackFile string
+			bpName        string
+			appDir        string
+		)
+		JustBeforeEach(func() {
+			file, err := helper.CopyBuildpack(buildpackFile, func(m *helper.Manifest) {
+				for _, d := range m.Dependencies {
+					uri, err := url.Parse(d.URI)
+					uri.User = url.UserPassword("login", "password")
+					Expect(err).ToNot(HaveOccurred())
+					d.URI = uri.String()
+				}
+			})
+			Expect(err).ToNot(HaveOccurred())
+			bpName = "brats_ruby_eol_" + cutlass.RandStringRunes(6)
+			Expect(cutlass.CreateOrUpdateBuildpack(bpName, file)).To(Succeed())
+			os.Remove(file)
+
+			appDir = CopySimpleBrats("~> 2.1.0")
+			app = cutlass.New(appDir)
+			app.Buildpacks = []string{bpName + "_buildpack"}
+			PushApp(app)
+		})
+		AfterEach(func() {
+			Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
+			Expect(os.RemoveAll(appDir)).To(Succeed())
+		})
 		Context("using an uncached buildpack", func() {
-			It("does not include credentials in logged dependency uris", func() {})
+			BeforeEach(func() {
+				buildpackFile = buildpacks.UncachedFile
+			})
+			It("does not include credentials in logged dependency uris", func() {
+				Expect(app.Stdout.String()).To(MatchRegexp(`ruby\-[\d\.]+\-linux\-x64\-[\da-f]+\.tgz`))
+				Expect(app.Stdout.String()).ToNot(ContainSubstring("login"))
+				Expect(app.Stdout.String()).ToNot(ContainSubstring("password"))
+			})
 		})
 		Context("using a cached buildpack", func() {
-			It("does not include credentials in logged dependency file paths", func() {})
+			BeforeEach(func() {
+				buildpackFile = buildpacks.UncachedFile
+			})
+			It("does not include credentials in logged dependency file paths", func() {
+				Expect(app.Stdout.String()).To(MatchRegexp(`ruby\-[\d\.]+\-linux\-x64\-[\da-f]+\.tgz`))
+				Expect(app.Stdout.String()).ToNot(ContainSubstring("login"))
+				Expect(app.Stdout.String()).ToNot(ContainSubstring("password"))
+			})
 		})
 	})
 
