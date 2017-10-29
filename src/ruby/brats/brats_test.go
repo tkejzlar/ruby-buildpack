@@ -110,8 +110,7 @@ var _ = Describe("Ruby buildpack", func() {
 				By("encrypts with bcrypt", func() {
 					hashedPassword, err := app.GetBody("/bcrypt")
 					Expect(err).ToNot(HaveOccurred())
-					Expect(hashedPassword).ToNot(Equal(""))
-					Expect(bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte("Hello, bcrypt"))).To(BeTrue())
+					Expect(bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte("Hello, bcrypt"))).ToNot(HaveOccurred())
 				})
 				By("supports bson", func() {
 					Expect(app.GetBody("/bson")).To(ContainSubstring("00040000"))
