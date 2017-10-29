@@ -32,7 +32,7 @@ var _ = Describe("Ruby buildpack", func() {
 			Expect(os.Remove(filepath.Join("/tmp", bpName+".zip"))).To(Succeed())
 
 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "no_dependencies"))
-			app.Buildpacks = []string{bpName}
+			app.Buildpacks = []string{bpName + "_buildpack"}
 		})
 		AfterEach(func() {
 			Expect(cutlass.DeleteBuildpack(bpName)).To(Succeed())
