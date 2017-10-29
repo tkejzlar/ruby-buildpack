@@ -191,7 +191,7 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 	})
 
-	FDescribe("staging with custom buildpack that uses credentials in manifest dependency uris", func() {
+	Describe("staging with custom buildpack that uses credentials in manifest dependency uris", func() {
 		var (
 			buildpackFile string
 			bpName        string
