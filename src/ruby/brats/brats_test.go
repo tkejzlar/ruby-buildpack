@@ -7,8 +7,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"ruby/brats/helper"
+	"sort"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/cloudfoundry/libbuildpack"
 	"github.com/cloudfoundry/libbuildpack/cutlass"
 	"golang.org/x/crypto/bcrypt"
@@ -178,7 +180,18 @@ var _ = Describe("Ruby buildpack", func() {
 	Describe("staging with a version of ruby that is not the latest patch release in the manifest", func() {
 		var appDir string
 		BeforeEach(func() {
-			appDir = CopySimpleBrats("2.4.1") // FIXME determine from manifest
+			manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
+			Expect(err).ToNot(HaveOccurred())
+			raw := manifest.AllDependencyVersions("ruby")
+			vs := make([]*semver.Version, len(raw))
+			for i, r := range raw {
+				vs[i], err = semver.NewVersion(r)
+				Expect(err).ToNot(HaveOccurred())
+			}
+			sort.Sort(semver.Collection(vs))
+			version := vs[0].Original()
+
+			appDir = CopySimpleBrats(version)
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{buildpacks.Cached}
 			PushApp(app)
