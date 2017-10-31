@@ -26,7 +26,7 @@ import (
 
 var _ = Describe("Ruby buildpack", func() {
 	var app *cutlass.App
-	// AfterEach(func() { app = DestroyApp(app) })
+	AfterEach(func() { app = DestroyApp(app) })
 
 	Context("Unbuilt buildpack (eg github)", func() {
 		var bpName string
