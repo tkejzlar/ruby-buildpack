@@ -159,7 +159,7 @@ var _ = Describe("Ruby buildpack", func() {
 				PushApp(app)
 
 				By("installs the correct version of Ruby", func() {
-					Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby " + fullRubyVersion))
+					Expect(app.Stdout.String()).To(ContainSubstring("Installing jruby " + fullRubyVersion))
 					Expect(app.GetBody("/version")).To(ContainSubstring(fullRubyVersion))
 				})
 				By("runs a simple webserver", func() {
