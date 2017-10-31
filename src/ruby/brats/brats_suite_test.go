@@ -111,12 +111,23 @@ func DestroyApp(app *cutlass.App) *cutlass.App {
 	return nil
 }
 
-func CopySimpleBrats(rubyVersion string) string {
-	dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "simple_brats"))
+func CopyBratsRuby(rubyVersion string) string {
+	dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "brats_ruby"))
 	Expect(err).ToNot(HaveOccurred())
 	data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
 	Expect(err).ToNot(HaveOccurred())
 	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
+	Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
+	return dir
+}
+
+func CopyBratsJRuby(rubyVersion, jrubyVersion string) string {
+	dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "brats_jruby"))
+	Expect(err).ToNot(HaveOccurred())
+	data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
+	Expect(err).ToNot(HaveOccurred())
+	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
+	data = bytes.Replace(data, []byte("<%= engine_version %>"), []byte(jrubyVersion), -1)
 	Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
 	return dir
 }

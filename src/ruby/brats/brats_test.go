@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"ruby/brats/helper"
 	"sort"
 	"strings"
@@ -96,7 +97,7 @@ var _ = Describe("Ruby buildpack", func() {
 		for _, v := range rubyVersions {
 			rubyVersion := v
 			It("Ruby version "+rubyVersion, func() {
-				appDir = CopySimpleBrats(rubyVersion)
+				appDir = CopyBratsRuby(rubyVersion)
 				app = cutlass.New(appDir)
 				app.Buildpacks = []string{buildpacks.Cached}
 				PushApp(app)
@@ -132,6 +133,62 @@ var _ = Describe("Ruby buildpack", func() {
 		}
 	})
 
+	FDescribe("For all supported JRuby versions", func() {
+		bpDir, err := cutlass.FindRoot()
+		if err != nil {
+			panic(err)
+		}
+		manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
+		rubyVersions := manifest.AllDependencyVersions("jruby")
+		var appDir string
+		AfterEach(func() { os.RemoveAll(appDir) })
+
+		for _, v := range rubyVersions {
+			m := regexp.MustCompile(`ruby-(.*)-jruby-(.*)`).FindStringSubmatch(v)
+			if len(m) != 3 {
+				panic("Incorrect jruby version " + v)
+			}
+			fullRubyVersion := v
+			rubyVersion := m[1]
+			jrubyVersion := m[2]
+			It("with JRuby version "+jrubyVersion+" and Ruby version "+rubyVersion, func() {
+				appDir = CopyBratsJRuby(rubyVersion, jrubyVersion)
+				app = cutlass.New(appDir)
+				app.Memory = "512M"
+				app.Buildpacks = []string{buildpacks.Cached}
+				PushApp(app)
+
+				By("installs the correct version of Ruby", func() {
+					Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby " + fullRubyVersion))
+					Expect(app.GetBody("/version")).To(ContainSubstring(fullRubyVersion))
+				})
+				By("runs a simple webserver", func() {
+					Expect(app.GetBody("/")).To(ContainSubstring("Hello, World"))
+				})
+				By("parses XML with nokogiri", func() {
+					Expect(app.GetBody("/nokogiri")).To(ContainSubstring("Hello, World"))
+				})
+				By("supports EventMachine", func() {
+					Expect(app.GetBody("/em")).To(ContainSubstring("Hello, EventMachine"))
+				})
+				By("encrypts with bcrypt", func() {
+					hashedPassword, err := app.GetBody("/bcrypt")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte("Hello, bcrypt"))).ToNot(HaveOccurred())
+				})
+				By("supports bson", func() {
+					Expect(app.GetBody("/bson")).To(ContainSubstring("00040000"))
+				})
+				By("supports postgres", func() {
+					Expect(app.GetBody("/pg")).To(ContainSubstring("The connection attempt failed."))
+				})
+				By("supports mysql2", func() {
+					Expect(app.GetBody("/mysql2")).To(ContainSubstring("Communications link failure"))
+				})
+			})
+		}
+	})
+
 	Describe("staging with ruby buildpack that sets EOL on dependency", func() {
 		var (
 			eolDate       string
@@ -153,7 +210,7 @@ var _ = Describe("Ruby buildpack", func() {
 			Expect(cutlass.CreateOrUpdateBuildpack(bpName, file)).To(Succeed())
 			os.Remove(file)
 
-			appDir = CopySimpleBrats("~> 2.1.0")
+			appDir = CopyBratsRuby("~> 2.1.0")
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{bpName + "_buildpack"}
 			PushApp(app)
@@ -196,7 +253,7 @@ var _ = Describe("Ruby buildpack", func() {
 			sort.Sort(semver.Collection(vs))
 			version := vs[0].Original()
 
-			appDir = CopySimpleBrats(version)
+			appDir = CopyBratsRuby(version)
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{buildpacks.Cached}
 			PushApp(app)
@@ -228,7 +285,7 @@ var _ = Describe("Ruby buildpack", func() {
 			Expect(cutlass.CreateOrUpdateBuildpack(bpName, file)).To(Succeed())
 			os.Remove(file)
 
-			appDir = CopySimpleBrats("~> 2.1.0")
+			appDir = CopyBratsRuby("~> 2.1.0")
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{bpName + "_buildpack"}
 			PushApp(app)
@@ -265,7 +322,7 @@ var _ = Describe("Ruby buildpack", func() {
 			dep, err := manifest.DefaultVersion("ruby")
 			Expect(err).ToNot(HaveOccurred())
 
-			appDir := CopySimpleBrats(dep.Version)
+			appDir := CopyBratsRuby(dep.Version)
 			AddDotProfileScriptToApp(appDir)
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{buildpacks.Cached}
@@ -285,7 +342,7 @@ var _ = Describe("Ruby buildpack", func() {
 
 	Describe("deploying an app that has sensitive environment variables", func() {
 		BeforeEach(func() {
-			appDir := CopySimpleBrats("~> 2.4")
+			appDir := CopyBratsRuby("~> 2.4")
 			app = cutlass.New(appDir)
 			app.Buildpacks = []string{buildpacks.Cached}
 			app.SetEnv("MY_SPECIAL_VAR", "SUPER SENSITIVE DATA")
