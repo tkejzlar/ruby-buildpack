@@ -1,6 +1,10 @@
 package brats_test
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -8,6 +12,7 @@ import (
 	"path/filepath"
 	"ruby/brats/helper"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -21,7 +26,7 @@ import (
 
 var _ = Describe("Ruby buildpack", func() {
 	var app *cutlass.App
-	AfterEach(func() { app = DestroyApp(app) })
+	// AfterEach(func() { app = DestroyApp(app) })
 
 	Context("Unbuilt buildpack (eg github)", func() {
 		var bpName string
@@ -278,8 +283,38 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 	})
 
-	PDescribe("deploying an app that has sensitive environment variables", func() {
+	Describe("deploying an app that has sensitive environment variables", func() {
+		BeforeEach(func() {
+			appDir := CopySimpleBrats("~> 2.4")
+			app = cutlass.New(appDir)
+			app.Buildpacks = []string{buildpacks.Cached}
+			app.SetEnv("MY_SPECIAL_VAR", "SUPER SENSITIVE DATA")
+			PushApp(app)
+		})
+		AfterEach(func() { os.RemoveAll(app.Path) })
+
 		It("will not write credentials to the app droplet", func() {
+			Expect(app.DownloadDroplet(filepath.Join(app.Path, "droplet.tgz"))).To(Succeed())
+			file, err := os.Open(filepath.Join(app.Path, "droplet.tgz"))
+			Expect(err).ToNot(HaveOccurred())
+			defer file.Close()
+			gz, err := gzip.NewReader(file)
+			Expect(err).ToNot(HaveOccurred())
+			defer gz.Close()
+			tr := tar.NewReader(gz)
+
+			for {
+				hdr, err := tr.Next()
+				if err == io.EOF {
+					break
+				}
+				b, err := ioutil.ReadAll(tr)
+				for _, content := range []string{"MY_SPECIAL_VAR", "SUPER SENSITIVE DATA"} {
+					if strings.Contains(string(b), content) {
+						Fail(fmt.Sprintf("Found sensitive string %s in %s", content, hdr.Name))
+					}
+				}
+			}
 		})
 	})
 })
