@@ -48,7 +48,7 @@ var _ = Describe("Ruby buildpack", func() {
 
 		It("runs", func() {
 			PushApp(app)
-			Expect(app.Stdout.String()).To(ContainSubstring("-----> Download go 1.9"))
+			Expect(app.Stdout.String()).To(ContainSubstring("-----> Download go "))
 
 			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby"))
 			Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
@@ -72,15 +72,17 @@ var _ = Describe("Ruby buildpack", func() {
 			PushApp(app)
 			Expect(app.Stdout.String()).ToNot(ContainSubstring("buildpack version changed from"))
 
-			newFile := filepath.Join("/tmp", filepath.Base(buildpacks.CachedFile))
-			Expect(libbuildpack.CopyFile(buildpacks.CachedFile, newFile)).To(Succeed())
-			Expect(ioutil.WriteFile("/tmp/VERSION", []byte("NewVerson"), 0644)).To(Succeed())
-			Expect(exec.Command("zip", "-d", newFile, "VERSION").Run()).To(Succeed())
-			Expect(exec.Command("zip", "-j", "-u", newFile, "/tmp/VERSION").Run()).To(Succeed())
+			newFile, err := helpers.ModifyBuildpack(path, func(path string, r io.Reader) (io.Reader, error) {
+				if path == "VERSION" {
+					return strings.NewReader("NewVersion"), nil
+				}
+				return r, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(cutlass.CreateOrUpdateBuildpack(bpName, newFile)).To(Succeed())
 			PushApp(app)
-			Expect(app.Stdout.String()).To(ContainSubstring("buildpack version changed from"))
+			Expect(app.Stdout.String()).To(MatchRegexp(`buildpack version changed from (\S+) to NewVersion`))
 		})
 	})
 
@@ -197,7 +199,7 @@ var _ = Describe("Ruby buildpack", func() {
 		)
 		JustBeforeEach(func() {
 			eolDate = time.Now().AddDate(0, 0, 10).Format("2006-01-02")
-			file, err := helper.CopyBuildpack(buildpackFile, func(m *helper.Manifest) {
+			file, err := helper.ModifyBuildpackManifest(buildpackFile, func(m *helper.Manifest) {
 				for _, eol := range m.DependencyDeprecationDates {
 					if eol.Name == "ruby" {
 						eol.Date = eolDate
@@ -271,7 +273,7 @@ var _ = Describe("Ruby buildpack", func() {
 			appDir        string
 		)
 		JustBeforeEach(func() {
-			file, err := helper.CopyBuildpack(buildpackFile, func(m *helper.Manifest) {
+			file, err := helper.ModifyBuildpackManifest(buildpackFile, func(m *helper.Manifest) {
 				for _, d := range m.Dependencies {
 					uri, err := url.Parse(d.URI)
 					uri.User = url.UserPassword("login", "password")

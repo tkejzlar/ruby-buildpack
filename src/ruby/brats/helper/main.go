@@ -10,8 +10,19 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func CopyBuildpack(path string, cb func(*Manifest)) (string, error) {
-	if file, err := modifyZipfile(path, func(path string, r io.Reader) (io.Reader, error) {
+func ModifyBuildpack(path string, cb func(path string, r io.Reader) (io.Reader, error)) (string, error) {
+	if file, err := modifyZipfile(path, cb); err != nil {
+		return file, err
+	} else {
+		if err := os.Rename(file, file+".zip"); err != nil {
+			return "", err
+		}
+		return file + ".zip", nil
+	}
+}
+
+func ModifyBuildpackManifest(path string, cb func(*Manifest)) (string, error) {
+	return ModifyBuildpack(path, func(path string, r io.Reader) (io.Reader, error) {
 		if path == "manifest.yml" {
 			if r, err := changeManifest(r, cb); err != nil {
 				return nil, err
@@ -20,14 +31,7 @@ func CopyBuildpack(path string, cb func(*Manifest)) (string, error) {
 			}
 		}
 		return r, nil
-	}); err != nil {
-		return file, err
-	} else {
-		if err := os.Rename(file, file+".zip"); err != nil {
-			return "", err
-		}
-		return file + ".zip", nil
-	}
+	})
 }
 
 type Manifest struct {
