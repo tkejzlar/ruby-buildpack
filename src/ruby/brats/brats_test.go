@@ -68,11 +68,11 @@ var _ = Describe("Ruby buildpack", func() {
 		})
 
 		It("prints useful warning message to stdout", func() {
-			Expect(cutlass.CreateOrUpdateBuildpack(bpName, buildpacks.CachedFile)).To(Succeed())
+			Expect(cutlass.CreateOrUpdateBuildpack(bpName, buildpacks.UncachedFile)).To(Succeed())
 			PushApp(app)
 			Expect(app.Stdout.String()).ToNot(ContainSubstring("buildpack version changed from"))
 
-			newFile, err := helpers.ModifyBuildpack(path, func(path string, r io.Reader) (io.Reader, error) {
+			newFile, err := helper.ModifyBuildpack(buildpacks.UncachedFile, func(path string, r io.Reader) (io.Reader, error) {
 				if path == "VERSION" {
 					return strings.NewReader("NewVersion"), nil
 				}
