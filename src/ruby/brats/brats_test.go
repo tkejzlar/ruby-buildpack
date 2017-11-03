@@ -133,7 +133,7 @@ var _ = Describe("Ruby buildpack", func() {
 		}
 	})
 
-	FDescribe("For all supported JRuby versions", func() {
+	Describe("For all supported JRuby versions", func() {
 		bpDir, err := cutlass.FindRoot()
 		if err != nil {
 			panic(err)
@@ -158,9 +158,8 @@ var _ = Describe("Ruby buildpack", func() {
 				app.Buildpacks = []string{buildpacks.Cached}
 				PushApp(app)
 
-				By("installs the correct version of Ruby", func() {
+				By("installs the correct version of JRuby", func() {
 					Expect(app.Stdout.String()).To(ContainSubstring("Installing jruby " + fullRubyVersion))
-					Expect(app.GetBody("/version")).To(ContainSubstring(fullRubyVersion))
 				})
 				By("runs a simple webserver", func() {
 					Expect(app.GetBody("/")).To(ContainSubstring("Hello, World"))
@@ -182,8 +181,8 @@ var _ = Describe("Ruby buildpack", func() {
 				By("supports postgres", func() {
 					Expect(app.GetBody("/pg")).To(ContainSubstring("The connection attempt failed."))
 				})
-				By("supports mysql2", func() {
-					Expect(app.GetBody("/mysql2")).To(ContainSubstring("Communications link failure"))
+				By("supports mysql", func() {
+					Expect(app.GetBody("/mysql")).To(ContainSubstring("Communications link failure"))
 				})
 			})
 		}
