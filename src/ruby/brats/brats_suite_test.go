@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -74,23 +75,23 @@ func CopyBrats(rubyVersion string) *cutlass.App {
 	return cutlass.New(dir)
 }
 
-// func CopyBratsJRuby(rubyVersion, jrubyVersion string) *cutlass.App {
-// 	dir, err := cutlass.CopyFixture(filepath.Join(bpDir, "fixtures", "brats_jruby"))
-// 	Expect(err).ToNot(HaveOccurred())
-// 	data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
-// 	Expect(err).ToNot(HaveOccurred())
-// 	if rubyVersion == "" {
-// 		manifest, err := libbuildpack.NewManifest(bpDir, nil, time.Now())
-// 		Expect(err).ToNot(HaveOccurred())
-// 		dep, err := manifest.DefaultVersion("ruby")
-// 		Expect(err).ToNot(HaveOccurred())
-// 		rubyVersion = dep.Version
-// 	}
-// 	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
-// 	data = bytes.Replace(data, []byte("<%= engine_version %>"), []byte(jrubyVersion), -1)
-// 	Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
-//  return cutlass.New(dir)
-// }
+func CopyBratsJRuby(fullRubyVersion string) *cutlass.App {
+	m := regexp.MustCompile(`ruby-(.*)-jruby-(.*)`).FindStringSubmatch(fullRubyVersion)
+	if len(m) != 3 {
+		panic("Incorrect jruby version " + fullRubyVersion)
+	}
+	rubyVersion := m[1]
+	jrubyVersion := m[2]
+
+	dir, err := cutlass.CopyFixture(filepath.Join(bratshelper.Data.BpDir, "fixtures", "brats_jruby"))
+	Expect(err).ToNot(HaveOccurred())
+	data, err := ioutil.ReadFile(filepath.Join(dir, "Gemfile"))
+	Expect(err).ToNot(HaveOccurred())
+	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
+	data = bytes.Replace(data, []byte("<%= engine_version %>"), []byte(jrubyVersion), -1)
+	Expect(ioutil.WriteFile(filepath.Join(dir, "Gemfile"), data, 0644)).To(Succeed())
+	return cutlass.New(dir)
+}
 
 // package brats_test
 
