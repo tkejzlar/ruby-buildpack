@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry/libbuildpack"
@@ -71,7 +70,7 @@ func PackageUniquelyVersionedBuildpack() (VersionedBuildpackPackage, error) {
 	if err != nil {
 		return VersionedBuildpackPackage{}, err
 	}
-	buildpackVersion := strings.TrimSpace(string(data))
+	buildpackVersion := string(data)
 	buildpackVersion = fmt.Sprintf("%s.%s", buildpackVersion, time.Now().Format("20060102150405"))
 
 	var manifest struct {
