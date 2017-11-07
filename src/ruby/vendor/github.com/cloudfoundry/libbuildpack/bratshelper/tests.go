@@ -301,9 +301,9 @@ func ForAllSupportedVersions(depName string, copyBrats func(string) *cutlass.App
 		versions := manifest.AllDependencyVersions(depName)
 
 		var app *cutlass.App
-		AfterEach(func() {
-			defaultCleanup(app)
-		})
+		// AfterEach(func() {
+		// 	defaultCleanup(app)
+		// })
 
 		for _, v := range versions {
 			version := v
