@@ -1,4 +1,4 @@
-package helper
+package bratshelper
 
 import (
 	"archive/zip"
@@ -130,12 +130,3 @@ func changeManifest(r io.Reader, cb func(*Manifest)) (io.Reader, error) {
 		return bytes.NewReader(data), nil
 	}
 }
-
-// func main() {
-// 	bp, err := CopyBuildpack("/Users/dgodd/workspace/ruby-buildpack/ruby_buildpack-v1.7.4.zip", func(obj *Manifest) {
-// 		for _, date := range obj.DependencyDeprecationDates {
-// 			date.Date = "2008-12-01"
-// 		}
-// 	})
-// 	fmt.Println(bp, err)
-// }
