@@ -301,16 +301,15 @@ func ForAllSupportedVersions(depName string, copyBrats func(string) *cutlass.App
 		versions := manifest.AllDependencyVersions(depName)
 
 		var app *cutlass.App
-		AfterEach(func() {
-			defaultCleanup(app)
-		})
+		// AfterEach(func() {
+		// 	defaultCleanup(app)
+		// })
 
 		for _, v := range versions {
 			version := v
 			It("with "+depName+" "+version, func() {
 				app = copyBrats(version)
 				app.Buildpacks = []string{Data.Cached}
-				PushApp(app)
 
 				runTests(version, app)
 			})

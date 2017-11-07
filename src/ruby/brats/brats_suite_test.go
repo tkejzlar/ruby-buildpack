@@ -93,6 +93,11 @@ func CopyBratsJRuby(fullRubyVersion string) *cutlass.App {
 	return cutlass.New(dir)
 }
 
+func PushApp(app *cutlass.App) {
+	Expect(app.Push()).To(Succeed())
+	Eventually(app.InstanceStates, 20*time.Second).Should(Equal([]string{"RUNNING"}))
+}
+
 // package brats_test
 
 // import (
@@ -192,11 +197,6 @@ func CopyBratsJRuby(fullRubyVersion string) *cutlass.App {
 // func TestBrats(t *testing.T) {
 // 	RegisterFailHandler(Fail)
 // 	RunSpecs(t, "Brats Suite")
-// }
-
-// func PushApp(app *cutlass.App) {
-// 	Expect(app.Push()).To(Succeed())
-// 	Eventually(app.InstanceStates, 20*time.Second).Should(Equal([]string{"RUNNING"}))
 // }
 
 // func DestroyApp(app *cutlass.App) *cutlass.App {
