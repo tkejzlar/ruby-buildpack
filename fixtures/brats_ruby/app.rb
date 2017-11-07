@@ -7,7 +7,7 @@ require 'pg'
 require 'sinatra'
 
 get '/' do
-  'Hello, World'
+  'Hello World!'
 end
 
 get '/version' do
