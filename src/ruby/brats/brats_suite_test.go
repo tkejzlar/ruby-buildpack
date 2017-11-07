@@ -65,7 +65,7 @@ func CopyBrats(rubyVersion string) *cutlass.App {
 		manifest, err := libbuildpack.NewManifest(bratshelper.Data.BpDir, nil, time.Now())
 		Expect(err).ToNot(HaveOccurred())
 		depVersions := manifest.AllDependencyVersions("ruby")
-		rubyVersion, err := libbuildpack.FindMatchingVersion(rubyVersion, depVersions)
+		rubyVersion, err = libbuildpack.FindMatchingVersion(rubyVersion, depVersions)
 		Expect(err).ToNot(HaveOccurred())
 	}
 	data = bytes.Replace(data, []byte("<%= ruby_version %>"), []byte(rubyVersion), -1)
