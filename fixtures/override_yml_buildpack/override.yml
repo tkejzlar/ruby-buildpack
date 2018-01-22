@@ -1,0 +1,11 @@
+---
+ruby:
+  default_versions:
+  - name: ruby
+    version: 2.2.7
+  dependencies:
+  - name: ruby
+    sha256: e16087417199b2d21c3f202360ed44489cfb7ed4059cf1a2881fc2d5e5116ae7
+    uri: https://buildpacks.cloudfoundry.org/dependencies/ruby/ruby-2.2.7-linux-x64-49b6bf7e.tgz
+    version: 2.2.7
+    cf_stacks: ['cflinuxfs2']

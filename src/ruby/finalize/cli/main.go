@@ -42,6 +42,13 @@ func main() {
 		os.Exit(11)
 	}
 
+	if stager.DepsDir() != "" {
+		if err := manifest.ApplyOverride(stager.DepsDir()); err != nil {
+			logger.Error("Unable to apply override.yml files: %s", err)
+			os.Exit(8)
+		}
+	}
+
 	f := finalize.Finalizer{
 		Stager:   stager,
 		Log:      logger,

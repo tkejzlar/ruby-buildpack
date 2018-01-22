@@ -5,6 +5,10 @@ get '/' do
   'Hello world!'
 end
 
+get '/version' do
+  "Ruby Version: #{RUBY_VERSION}"
+end
+
 get '/yaml' do
   '<pre>' + YAML.load("{foo: [bar, baz, quux]}").to_yaml + '</pre>'
 end
