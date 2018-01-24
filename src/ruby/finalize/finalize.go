@@ -229,25 +229,36 @@ func (f *Finalizer) PrecompileAssets() error {
 		return nil
 	}
 
-	cmd := exec.Command("bundle", "exec", "rake", "-n", "assets:precompile")
-	cmd.Dir = f.Stager.BuildDir()
-	if err := f.Command.Run(cmd); err != nil {
-		return nil
-	}
+	// cmd := exec.Command("env")
+	// cmd.Dir = f.Stager.BuildDir()
+	// cmd.Stdout = os.Stdout
+	// if err := f.Command.Run(cmd); err != nil {
+	// 	return nil
+	// }
+
+	// cmd = exec.Command("bundle", "exec", "rake", "-n", "assets:precompile")
+	// cmd.Dir = f.Stager.BuildDir()
+	// if err := f.Command.Run(cmd); err != nil {
+	// 	return nil
+	// }
 
 	env := append(os.Environ(), fmt.Sprintf("DATABASE_URL=%s", f.databaseUrl()))
 	if _, exists := os.LookupEnv("SECRET_KEY_BASE"); !exists {
 		env = append(env, "SECRET_KEY_BASE=dummy-staging-key")
 	}
 
+	f.Log.BeginStep("DAVE CONFUSED START")
+
 	f.Log.BeginStep("Precompiling assets")
 	startTime := time.Now()
-	cmd = exec.Command("bundle", "exec", "rake", "assets:precompile")
+	cmd := exec.Command("bundle", "exec", "rake", "assets:precompile")
 	cmd.Dir = f.Stager.BuildDir()
 	cmd.Stdout = text.NewIndentWriter(os.Stdout, []byte("       "))
 	cmd.Stderr = text.NewIndentWriter(os.Stderr, []byte("       "))
 	cmd.Env = env
 	err := f.Command.Run(cmd)
+
+	f.Log.BeginStep("DAVE CONFUSED END")
 
 	f.Log.Info("Asset precompilation completed (%v)", time.Since(startTime))
 
