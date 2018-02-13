@@ -1,0 +1,5 @@
+source 'https://rubygems.org'
+
+gem 'typhoeus'
+# gem 'ffi', '1.9.18'
+gem 'ffi', git: 'https://github.com/ffi/ffi.git'

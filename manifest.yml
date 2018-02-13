@@ -111,6 +111,12 @@ dependencies:
   sha256: bbe35ce6646e4168fcb1071d5f83b2d1154924f5150df0f5fca0f37d2583a182
   cf_stacks:
   - cflinuxfs2
+- name: automake
+  version: 1.15
+  uri: https://buildpacks.cloudfoundry.org/dependencies/manual-binaries/ruby/automake-1.15.tar.gz
+  sha256: fb693b834a5b751bde827d318c57ca1906616ceb547e5c93bbcbc2a3cd2ff4f3
+  cf_stacks:
+  - cflinuxfs2
 - name: yarn
   version: 1.3.2
   uri: https://buildpacks.cloudfoundry.org/dependencies/yarn/yarn-v1.3.2-6cfe82e5.tar.gz

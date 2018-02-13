@@ -43,6 +43,7 @@ type Versions interface {
 type Stager interface {
 	BuildDir() string
 	DepDir() string
+	DepsDir() string
 	DepsIdx() string
 	LinkDirectoryInDepDir(string, string) error
 	WriteEnvFile(string, string) error
@@ -142,6 +143,11 @@ func Run(s *Supplier) error {
 			return err
 		}
 	}
+
+	// if err := s.InstallAutomake(); err != nil {
+	// 	s.Log.Error("Unable to install automake: %s", err.Error())
+	// 	return err
+	// }
 
 	if err := s.InstallGems(); err != nil {
 		s.Log.Error("Unable to install gems: %s", err.Error())
@@ -446,6 +452,30 @@ func (s *Supplier) SymlinkBundlerIntoRubygems() error {
 
 	return os.Symlink(relPath, filepath.Join(destDir, "bundler-"+bundlerVersion))
 }
+
+// func (s *Supplier) InstallAutomake() error {
+// 	// if err := s.Command.Execute("/tmp", os.Stdout, os.Stderr, "tar", "xf", filepath.Join(s.Stager.BuildDir(), "automake-1.15.tar.gz")); err != nil {
+// 	// 	s.Log.Error("Error extracting automake %v", err)
+// 	// 	return err
+// 	// }
+// 	// os.Setenv("PATH", "/tmp/usr/bin:"+os.Getenv("PATH"))
+
+// 	// if err := s.Manifest.InstallOnlyVersion("automake", "/tmp"); err != nil {
+// 	// 	return err
+// 	// }
+
+// 	s.Log.BeginStep("InstallAutomake")
+
+// 	if err := os.Setenv("PATH", "/tmp/usr/bin:"+os.Getenv("PATH")); err != nil {
+// 		return err
+// 	}
+
+// 	if err := s.Command.Execute("/tmp", os.Stdout, os.Stderr, "ls", "-l"); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 func (s *Supplier) UpdateRubygems() error {
 	dep := libbuildpack.Dependency{Name: "rubygems"}

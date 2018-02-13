@@ -1,0 +1,23 @@
+GIT
+  remote: https://github.com/ffi/ffi.git
+  revision: 9817429e273cc4680b67aa909ca6fd4203e4e1e2
+  specs:
+    ffi (1.9.21)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ethon (0.11.0)
+      ffi (>= 1.3.0)
+    typhoeus (1.3.0)
+      ethon (>= 0.9.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  ffi!
+  typhoeus
+
+BUNDLED WITH
+   1.16.1
