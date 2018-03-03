@@ -769,17 +769,31 @@ bundle config WITHOUT "%s" > /dev/null
 		if hasRails41 {
 			metadata := s.Cache.Metadata()
 			if metadata.SecretKeyBase == "" {
-				metadata.SecretKeyBase, err = s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
+				metadata.SecretKeyBase, err = s.rakeSecret()
 				if err != nil {
-					return fmt.Errorf("Running 'rake secret'", err)
+					return err
 				}
-				metadata.SecretKeyBase = strings.TrimSpace(metadata.SecretKeyBase)
 			}
 			scriptContents += fmt.Sprintf("\nexport SECRET_KEY_BASE=${SECRET_KEY_BASE:-%s}\n", metadata.SecretKeyBase)
 		}
 	}
 
 	return s.Stager.WriteProfileD("ruby.sh", scriptContents)
+}
+
+func (s *Supplier) rakeSecret() (string, error) {
+	secret, err := s.Command.Output(s.Stager.BuildDir(), "bundle", "exec", "rake", "secret")
+	if err != nil {
+		return "", fmt.Errorf("Running 'rake secret': %s", err)
+	}
+	for _, s := range strings.Split(secret, "\n") {
+		s = strings.TrimSpace(s)
+		if regexp.MustCompile(`^[a-fA-F0-9]{16,}$`).MatchString(s) {
+			secret = s
+			break
+		}
+	}
+	return secret, nil
 }
 
 func (s *Supplier) CalcChecksum() (string, error) {

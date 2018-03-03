@@ -432,13 +432,32 @@ var _ = Describe("Supply", func() {
 				Context("SECRET_KEY_BASE is not cached", func() {
 					BeforeEach(func() {
 						mockCache.EXPECT().Metadata().Return(&cache.Metadata{})
-						mockCommand.EXPECT().Output(buildDir, "bundle", "exec", "rake", "secret").Return("\n\nabcdef\n\n", nil)
 					})
 					It("writes default SECRET_KEY_BASE to profile.d", func() {
+						mockCommand.EXPECT().Output(buildDir, "bundle", "exec", "rake", "secret").Return("abcdef", nil)
+
 						Expect(supplier.WriteProfileD("enginename")).To(Succeed())
 						contents, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "profile.d", "ruby.sh"))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(string(contents)).To(ContainSubstring("export SECRET_KEY_BASE=${SECRET_KEY_BASE:-abcdef}"))
+					})
+					Context("rake secret returns multiple lines", func() {
+						It("chooses the most likely line", func() {
+							mockCommand.EXPECT().Output(buildDir, "bundle", "exec", "rake", "secret").Return("hi mom\nabcdef0123456789abcdef  \nbye dad", nil)
+
+							Expect(supplier.WriteProfileD("enginename")).To(Succeed())
+							contents, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "profile.d", "ruby.sh"))
+							Expect(err).ToNot(HaveOccurred())
+							Expect(string(contents)).To(ContainSubstring("export SECRET_KEY_BASE=${SECRET_KEY_BASE:-abcdef0123456789abcdef}"))
+						})
+						It("uses all the text if no line looks ideal", func() {
+							mockCommand.EXPECT().Output(buildDir, "bundle", "exec", "rake", "secret").Return("hi mom\nbye dad", nil)
+
+							Expect(supplier.WriteProfileD("enginename")).To(Succeed())
+							contents, err := ioutil.ReadFile(filepath.Join(depsDir, depsIdx, "profile.d", "ruby.sh"))
+							Expect(err).ToNot(HaveOccurred())
+							Expect(string(contents)).To(ContainSubstring("export SECRET_KEY_BASE=${SECRET_KEY_BASE:-hi mom\nbye dad}"))
+						})
 					})
 				})
 			})
