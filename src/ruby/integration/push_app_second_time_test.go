@@ -15,15 +15,36 @@ var _ = Describe("pushing an app a second time", func() {
 
 	BeforeEach(func() {
 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "sinatra"))
+		app.SetEnv("BP_DEBUG", "true")
 	})
 
-	It("uses the cache and runs", func() {
+	RestoringVendorBundle := "Restoring vendor_bundle from cache"
+	DownloadRegexp := `Download \[.*/bundler\-.*\.tgz\]`
+	CopyRegexp := `Copy \[.*/bundler\-.*\.tgz\]`
+
+	FIt("uses the cache and runs", func() {
 		PushAppAndConfirm(app)
-		Expect(app.Stdout.String()).ToNot(ContainSubstring("Restoring vendor_bundle from cache"))
+		Expect(app.Stdout.String()).ToNot(ContainSubstring(RestoringVendorBundle))
+		if !cutlass.Cached {
+			Expect(app.Stdout.String()).To(MatchRegexp(DownloadRegexp))
+			Expect(app.Stdout.String()).ToNot(MatchRegexp(CopyRegexp))
+		}
 		Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
 
 		PushAppAndConfirm(app)
-		Expect(app.Stdout.String()).To(ContainSubstring("Restoring vendor_bundle from cache"))
+		Expect(app.Stdout.String()).To(ContainSubstring(RestoringVendorBundle))
+		if !cutlass.Cached {
+			Expect(app.Stdout.String()).To(MatchRegexp(CopyRegexp))
+			Expect(app.Stdout.String()).ToNot(MatchRegexp(DownloadRegexp))
+		}
+		Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
+
+		PushAppAndConfirm(app)
+		Expect(app.Stdout.String()).To(ContainSubstring(RestoringVendorBundle))
+		if !cutlass.Cached {
+			Expect(app.Stdout.String()).To(MatchRegexp(CopyRegexp))
+			Expect(app.Stdout.String()).ToNot(MatchRegexp(DownloadRegexp))
+		}
 		Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
 	})
 })
