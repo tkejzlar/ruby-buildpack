@@ -383,6 +383,9 @@ func (m *Manifest) fetchAppCachedBuildpackDependency(entry *ManifestEntry, outpu
 	shaURI := sha256.Sum256([]byte(entry.URI))
 	cacheFile := filepath.Join(m.appCacheDir, "dependencies", hex.EncodeToString(shaURI[:]), filepath.Base(entry.URI))
 
+	m.filesInAppCache[cacheFile] = true
+	m.filesInAppCache[filepath.Dir(cacheFile)] = true
+
 	foundCacheFile, err := FileExists(cacheFile)
 	if err != nil {
 		return err
@@ -403,8 +406,6 @@ func (m *Manifest) fetchAppCachedBuildpackDependency(entry *ManifestEntry, outpu
 		return err
 	}
 
-	m.filesInAppCache[cacheFile] = true
-	m.filesInAppCache[filepath.Dir(cacheFile)] = true
 	return nil
 }
 
@@ -428,7 +429,10 @@ func (m *Manifest) FetchDependency(dep Dependency, outputFile string) error {
 func (m *Manifest) CleanupAppCache() error {
 	pathsToDelete := []string{}
 
-	if err := filepath.Walk(m.appCacheDir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(filepath.Join(m.appCacheDir, "dependencies"), func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("Failed while cleaning up app cache; couldn't look at %s because: %v", path, err)
 		}
@@ -444,6 +448,7 @@ func (m *Manifest) CleanupAppCache() error {
 	}
 
 	for _, path := range pathsToDelete {
+		m.log.Debug("Deleting cached file: %s", path)
 		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("Failed while cleaning up app cache; couldn't delete %s because: %v", path, err)
 		}
