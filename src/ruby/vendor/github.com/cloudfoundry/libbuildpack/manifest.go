@@ -76,7 +76,7 @@ func NewManifest(bpDir string, logger *Logger, currentTime time.Time) (*Manifest
 }
 
 func (m *Manifest) SetAppCacheDir(appCacheDir string) (err error) {
-	m.appCacheDir, err = filepath.Abs(appCacheDir)
+	m.appCacheDir, err = filepath.Abs(filepath.Join(appCacheDir, "dependencies"))
 	return
 }
 func (m *Manifest) replaceDefaultVersion(oDep Dependency) {
@@ -381,7 +381,7 @@ func downloadDependency(entry *ManifestEntry, outputFile string, logger *Logger)
 
 func (m *Manifest) fetchAppCachedBuildpackDependency(entry *ManifestEntry, outputFile string) error {
 	shaURI := sha256.Sum256([]byte(entry.URI))
-	cacheFile := filepath.Join(m.appCacheDir, "dependencies", hex.EncodeToString(shaURI[:]), filepath.Base(entry.URI))
+	cacheFile := filepath.Join(m.appCacheDir, hex.EncodeToString(shaURI[:]), filepath.Base(entry.URI))
 
 	m.filesInAppCache[cacheFile] = true
 	m.filesInAppCache[filepath.Dir(cacheFile)] = true
@@ -429,7 +429,7 @@ func (m *Manifest) FetchDependency(dep Dependency, outputFile string) error {
 func (m *Manifest) CleanupAppCache() error {
 	pathsToDelete := []string{}
 
-	if err := filepath.Walk(filepath.Join(m.appCacheDir, "dependencies"), func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(m.appCacheDir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
