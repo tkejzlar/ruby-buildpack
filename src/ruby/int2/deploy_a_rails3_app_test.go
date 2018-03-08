@@ -1,54 +1,68 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestRails3(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "Rails 3 App", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "rails3_mri_200")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-// var _ = Describe("Rails 3 App", func() {
-// 	var app *cutlass.App
+		it("in an online environment", func() {
+			app.SetEnv("DATABASE_URL", "sqlite3://db/test.db")
+			Expect(app.PushAndConfirm()).To(Succeed())
 
-// 	AfterEach(func() {
-// 		if app != nil {
-// 			app.Destroy()
-// 		}
-// 		app = nil
-// 	})
+			By("the app can be visited in the browser", func() {
+				Expect(app.GetBody("/")).To(ContainSubstring("hello"))
+			})
 
-// 	It("in an online environment", func() {
-// 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails3_mri_200"))
-// 		app.SetEnv("DATABASE_URL", "sqlite3://db/test.db")
-// 		PushAppAndConfirm(app)
+			By("the app did not include the static asset or logging gems from Heroku", func() {
+				By("the rails 3 plugins are installed automatically", func() {
+					files, err := app.Files("/app/vendor/plugins")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(files).To(ContainElement("/app/vendor/plugins/rails3_serve_static_assets/init.rb"))
+					Expect(files).To(ContainElement("/app/vendor/plugins/rails_log_stdout/init.rb"))
+				})
+			})
 
-// 		By("the app can be visited in the browser", func() {
-// 			Expect(app.GetBody("/")).To(ContainSubstring("hello"))
-// 		})
+			By("we include a rails logger message in the initializer", func() {
+				By("the log message is visible in the cf cli app logging", func() {
+					Expect(app.Log()).To(ContainSubstring("Logging is being redirected to STDOUT with rails_log_stdout plugin"))
+				})
+			})
 
-// 		By("the app did not include the static asset or logging gems from Heroku", func() {
-// 			By("the rails 3 plugins are installed automatically", func() {
-// 				files, err := app.Files("/app/vendor/plugins")
-// 				Expect(err).ToNot(HaveOccurred())
-// 				Expect(files).To(ContainElement("/app/vendor/plugins/rails3_serve_static_assets/init.rb"))
-// 				Expect(files).To(ContainElement("/app/vendor/plugins/rails_log_stdout/init.rb"))
-// 			})
-// 		})
+			By("we include a static asset", func() {
+				By("app serves the static asset", func() {
+					Expect(app.GetBody("/assets/application.css")).To(ContainSubstring("body{color:red}"))
+				})
+			})
+		})
 
-// 		By("we include a rails logger message in the initializer", func() {
-// 			By("the log message is visible in the cf cli app logging", func() {
-// 				Expect(app.Stdout.String()).To(ContainSubstring("Logging is being redirected to STDOUT with rails_log_stdout plugin"))
-// 			})
-// 		})
-
-// 		By("we include a static asset", func() {
-// 			By("app serves the static asset", func() {
-// 				Expect(app.GetBody("/assets/application.css")).To(ContainSubstring("body{color:red}"))
-// 			})
-// 		})
-// 	})
-
-// 	AssertNoInternetTraffic("rails3_mri_200")
-// })
+		// TODO
+		// AssertNoInternetTraffic("rails3_mri_200")
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}

@@ -45,6 +45,7 @@ func (c *Cluster) NewApp(bpDir, fixtureName string) (models.App, error) {
 	return &App{
 		cluster:    c,
 		buildpacks: []string{},
+		env:        map[string]string{},
 		fixture:    filepath.Join(bpDir, "fixtures", fixtureName),
 		name:       fixtureName + "_" + cutlass.RandStringRunes(5),
 		tmpPath:    tmpPath,

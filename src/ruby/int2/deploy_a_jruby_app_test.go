@@ -1,53 +1,72 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestJRuby(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "JRuby App", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "sinatra_jruby")
+			Expect(err).ToNot(HaveOccurred())
+			// TODO
+			// app.Memory("512M")
+		})
 
-// var _ = Describe("JRuby App", func() {
-// 	var app *cutlass.App
+		when("without start command", func() {
+			it("", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
 
-// 	AfterEach(func() { app = DestroyApp(app) })
+				By("the buildpack logged it installed a specific version of JRuby", func() {
+					Expect(app.Log()).To(ContainSubstring("Installing openjdk"))
+					Expect(app.Log()).To(MatchRegexp("ruby-2.3.\\d+-jruby-9.1.\\d+.0"))
+					Expect(app.GetBody("/ruby")).To(MatchRegexp("jruby 2.3.\\d+"))
+				})
 
-// 	Context("without start command", func() {
-// 		BeforeEach(func() {
-// 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "sinatra_jruby"))
-// 			app.Memory = "512M"
-// 		})
+				By("the OpenJDK runs properly", func() {
+					Expect(app.Log()).ToNot(ContainSubstring("OpenJDK 64-Bit Server VM warning"))
+				})
+			})
 
-// 		It("", func() {
-// 			PushAppAndConfirm(app)
+			when("a cached buildpack", func() {
+				it.Before(func() { SkipUnlessCached(t) })
 
-// 			By("the buildpack logged it installed a specific version of JRuby", func() {
-// 				Expect(app.Stdout.String()).To(ContainSubstring("Installing openjdk"))
-// 				Expect(app.Stdout.String()).To(MatchRegexp("ruby-2.3.\\d+-jruby-9.1.\\d+.0"))
-// 				Expect(app.GetBody("/ruby")).To(MatchRegexp("jruby 2.3.\\d+"))
-// 			})
+				// TODO
+				// AssertNoInternetTraffic("sinatra_jruby")
+			})
+		})
+		when("with a jruby start command", func() {
+			it.Before(func() {
+				app, err = cluster.NewApp(bpDir, "jruby_start_command")
+				Expect(err).ToNot(HaveOccurred())
+				// TODO
+				// app.Memory("512M")
+			})
 
-// 			By("the OpenJDK runs properly", func() {
-// 				Expect(app.Stdout.String()).ToNot(ContainSubstring("OpenJDK 64-Bit Server VM warning"))
-// 			})
-// 		})
-
-// 		Context("a cached buildpack", func() {
-// 			BeforeEach(SkipUnlessCached)
-
-// 			AssertNoInternetTraffic("sinatra_jruby")
-// 		})
-// 	})
-// 	Context("with a jruby start command", func() {
-// 		BeforeEach(func() {
-// 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "jruby_start_command"))
-// 			app.Memory = "512M"
-// 		})
-
-// 		It("stages and runs successfully", func() {
-// 			PushAppAndConfirm(app)
-// 		})
-// 	})
-// })
+			it("stages and runs successfully", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
+			})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}

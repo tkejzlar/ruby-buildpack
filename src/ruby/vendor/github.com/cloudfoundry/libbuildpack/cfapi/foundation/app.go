@@ -32,6 +32,9 @@ type App struct {
 	startCommand string
 }
 
+func (a *App) Name() string {
+	return a.name
+}
 func (a *App) Buildpacks(buildpacks []string) {
 	a.buildpacks = buildpacks
 }

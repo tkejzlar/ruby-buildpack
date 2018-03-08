@@ -1,57 +1,79 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestRails4(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "Rails 4 App", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "rails4")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-// var _ = Describe("Rails 4 App", func() {
-// 	var app *cutlass.App
-// 	AfterEach(func() { app = DestroyApp(app) })
+		when("in an offline environment", func() {
+			it.Before(func() { SkipUnlessUncached(t) })
 
-// 	Context("in an offline environment", func() {
-// 		BeforeEach(func() {
-// 			SkipUnlessCached()
-// 		})
+			it("", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
 
-// 		It("", func() {
-// 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4"))
-// 			PushAppAndConfirm(app)
+				Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
+				Expect(app.Log()).To(ContainSubstring("Copy [/"))
+			})
 
-// 			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-// 			Expect(app.Stdout.String()).To(ContainSubstring("Copy [/"))
-// 		})
+			// TODO
+			// AssertNoInternetTraffic("rails4")
+		})
 
-// 		AssertNoInternetTraffic("rails4")
-// 	})
+		when("in an online environment", func() {
+			it.Before(func() { SkipUnlessCached(t) })
 
-// 	Context("in an online environment", func() {
-// 		BeforeEach(SkipUnlessUncached)
+			it("app has dependencies", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
+				Expect(app.Log()).To(ContainSubstring("Installing node 4."))
+				Expect(app.Log()).To(ContainSubstring("Download [https://"))
 
-// 		It("app has dependencies", func() {
-// 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4"))
-// 			PushAppAndConfirm(app)
-// 			Expect(app.Stdout.String()).To(ContainSubstring("Installing node 4."))
-// 			Expect(app.Stdout.String()).To(ContainSubstring("Download [https://"))
+				Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
+			})
 
-// 			Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-// 		})
+			when("app has non vendored dependencies", func() {
+				it.Before(func() {
+					app, err = cluster.NewApp(bpDir, "rails4")
+					Expect(err).ToNot(HaveOccurred())
+				})
+				it("", func() {
+					// TODO
+					// Expect(filepath.Join(app.Path, "vendor")).ToNot(BeADirectory())
 
-// 		Context("app has non vendored dependencies", func() {
-// 			It("", func() {
-// 				app = cutlass.New(filepath.Join(bpDir, "fixtures", "rails4_not_vendored"))
-// 				Expect(filepath.Join(app.Path, "vendor")).ToNot(BeADirectory())
+					Expect(app.PushAndConfirm()).To(Succeed())
 
-// 				PushAppAndConfirm(app)
+					Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
+				})
 
-// 				Expect(app.GetBody("/")).To(ContainSubstring("The Kessel Run"))
-// 			})
-
-// 			AssertUsesProxyDuringStagingIfPresent("rails4_not_vendored")
-// 		})
-// 	})
-// })
+				// TODO
+				// AssertUsesProxyDuringStagingIfPresent("rails4_not_vendored")
+			})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}

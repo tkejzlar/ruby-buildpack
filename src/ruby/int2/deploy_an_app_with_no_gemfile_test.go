@@ -1,54 +1,65 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestNoGemfile(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "App with No Gemfile", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "no_gemfile")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-// var _ = Describe("App with No Gemfile", func() {
-// 	var app *cutlass.App
+		when("Single/Final buildpack", func() {
+			it.Before(func() {
+				app.Buildpacks([]string{"ruby_buildpack"})
+			})
+			it("fails in finalize", func() {
+				Expect(app.Push()).ToNot(Succeed())
+				Expect(app.ConfirmBuildpack("")).To(Succeed())
+				Eventually(app.Log).Should(ContainSubstring("Gemfile.lock required"))
+			})
+		})
 
-// 	AfterEach(func() {
-// 		if app != nil {
-// 			app.Destroy()
-// 		}
-// 		app = nil
-// 	})
+		when("Supply buildpack", func() {
+			it.Before(func() {
+				if !cluster.HasMultiBuildpack() {
+					t.Skip("API does not have multi buildpack support")
+				}
+				app.Buildpacks([]string{"ruby_buildpack", "binary_buildpack"})
+			})
+			it("deploys", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
+				Expect(app.Log()).To(ContainSubstring("Installing ruby"))
 
-// 	BeforeEach(func() {
-// 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "no_gemfile"))
-// 	})
-
-// 	Context("Single/Final buildpack", func() {
-// 		BeforeEach(func() {
-// 			app.Buildpacks = []string{"ruby_buildpack"}
-// 		})
-// 		It("fails in finalize", func() {
-// 			Expect(app.Push()).ToNot(Succeed())
-// 			Expect(app.ConfirmBuildpack(buildpackVersion)).To(Succeed())
-// 			Eventually(app.Stdout.String).Should(ContainSubstring("Gemfile.lock required"))
-// 		})
-// 	})
-
-// 	Context("Supply buildpack", func() {
-// 		BeforeEach(func() {
-// 			if !ApiHasMultiBuildpack() {
-// 				Skip("API does not have multi buildpack support")
-// 			}
-// 			app.Buildpacks = []string{"ruby_buildpack", "binary_buildpack"}
-// 		})
-// 		It("deploys", func() {
-// 			PushAppAndConfirm(app)
-// 			Expect(app.Stdout.String()).To(ContainSubstring("Installing ruby"))
-
-// 			By("running with the supplied ruby version", func() {
-// 				defaultRubyVersion := DefaultVersion("ruby")
-// 				Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: " + defaultRubyVersion))
-// 			})
-// 		})
-// 	})
-// })
+				By("running with the supplied ruby version", func() {
+					defaultRubyVersion, err := DefaultVersion("ruby")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(app.GetBody("/")).To(ContainSubstring("Ruby Version: " + defaultRubyVersion))
+				})
+			})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}

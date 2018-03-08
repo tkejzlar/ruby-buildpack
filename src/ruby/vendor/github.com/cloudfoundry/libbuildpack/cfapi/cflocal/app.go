@@ -25,6 +25,9 @@ type App struct {
 	Stderr     bytes.Buffer
 }
 
+func (a *App) Name() string {
+	return a.name
+}
 func (a *App) Log() string {
 	return a.Stdout.String()
 }
@@ -169,6 +172,9 @@ func (a *App) Files(path string) ([]string, error) {
 
 func (a *App) RunTask(command string) ([]byte, error) {
 	return []byte(""), fmt.Errorf("not implemented")
+}
+func (a *App) SetEnv(key, value string) {
+	panic("not implemented")
 }
 
 func (a *App) ResetLog() {

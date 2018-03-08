@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/cloudfoundry/libbuildpack"
 	"github.com/cloudfoundry/libbuildpack/cfapi"
@@ -52,4 +53,16 @@ func DefaultVersion(name string) (string, error) {
 		return "", fmt.Errorf("version was empty")
 	}
 	return dep.Version, nil
+}
+
+func SkipUnlessUncached(t *testing.T) {
+	if cutlass.Cached {
+		t.Skip("Running cached tests")
+	}
+}
+
+func SkipUnlessCached(t *testing.T) {
+	if !cutlass.Cached {
+		t.Skip("Running uncached tests")
+	}
 }

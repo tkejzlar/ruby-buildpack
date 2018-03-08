@@ -1,28 +1,47 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestReadline(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "CF Ruby Buildpack", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "with_readline")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-// var _ = Describe("CF Ruby Buildpack", func() {
-// 	var app *cutlass.App
-// 	AfterEach(func() { app = DestroyApp(app) })
+		when("in an online environment", func() {
+			it.Before(func() {
+				SkipUnlessUncached(t)
+			})
 
-// 	Context("in an online environment", func() {
-// 		BeforeEach(func() {
-// 			SkipUnlessUncached()
-// 			app = cutlass.New(filepath.Join(bpDir, "fixtures", "with_readline"))
-// 		})
-
-// 		It("", func() {
-// 			PushAppAndConfirm(app)
-// 			Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
-// 			Expect(app.Stdout.String()).ToNot(ContainSubstring("cannot open shared object file"))
-// 		})
-// 	})
-// })
+			it("", func() {
+				Expect(app.PushAndConfirm()).To(Succeed())
+				Expect(app.GetBody("/")).To(ContainSubstring("Hello world!"))
+				Expect(app.Log()).ToNot(ContainSubstring("cannot open shared object file"))
+			})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}

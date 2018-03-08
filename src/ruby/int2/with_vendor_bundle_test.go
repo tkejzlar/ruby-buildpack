@@ -6,6 +6,7 @@ import (
 	"github.com/cloudfoundry/libbuildpack/cfapi"
 	. "github.com/onsi/gomega"
 	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 )
 
 func TestWithVendorBundle(t *testing.T) {
@@ -51,5 +52,5 @@ func TestWithVendorBundle(t *testing.T) {
 				Eventually(app.Log).Should(ContainSubstring("This is blue"))
 			})
 		})
-	})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }

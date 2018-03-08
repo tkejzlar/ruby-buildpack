@@ -23,6 +23,7 @@ import (
 type App struct {
 	cluster     *Cluster
 	buildpacks  []string
+	env         map[string]string
 	fixture     string
 	name        string
 	tmpPath     string
@@ -32,6 +33,9 @@ type App struct {
 	Stderr      bytes.Buffer
 }
 
+func (a *App) Name() string {
+	return a.name
+}
 func (a *App) Buildpacks(buildpacks []string) {
 	a.buildpacks = buildpacks
 }
@@ -90,6 +94,12 @@ func (a *App) Stage() error {
 	if err := libbuildpack.CopyDirectory(a.fixture, filepath.Join(a.tmpPath, "app")); err != nil {
 		return err
 	}
+
+	env := []string{}
+	for k, v := range a.env {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	var additionalFlags []string
 	if len(a.buildpacks) > 0 {
 		additionalFlags = []string{"-skipDetect=true", "-buildpackOrder=" + strings.Join(a.buildpacks, ",")}
@@ -108,6 +118,7 @@ func (a *App) Stage() error {
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
+		Env:          env,
 		Cmd:          additionalFlags,
 	}, &container.HostConfig{
 		AutoRemove:      true,
@@ -162,11 +173,17 @@ func (a *App) Run() error {
 	}
 	io.Copy(&a.Stdout, out)
 
+	env := []string{}
+	for k, v := range a.env {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        imageName,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
+		Env:          env,
 	}, &container.HostConfig{
 		AutoRemove:      true,
 		PublishAllPorts: true,
@@ -284,4 +301,8 @@ func (a *App) RunTask(command string) ([]byte, error) {
 
 func (a *App) ResetLog() {
 	a.Stdout.Reset()
+}
+
+func (a *App) SetEnv(key, value string) {
+	a.env[key] = value
 }

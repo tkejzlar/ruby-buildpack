@@ -10,6 +10,8 @@ type Cluster interface {
 }
 
 type App interface {
+	Name() string
+	SetEnv(key, value string)
 	Buildpacks([]string)
 	ConfirmBuildpack(version string) error
 	Push() error

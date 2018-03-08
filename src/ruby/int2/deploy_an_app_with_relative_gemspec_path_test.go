@@ -1,24 +1,40 @@
 package integration_test
 
-// import (
-// 	"path/filepath"
+import (
+	"testing"
 
-// 	"github.com/cloudfoundry/libbuildpack/cutlass"
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	. "github.com/onsi/gomega"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+)
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// )
+func TestRelatuiveGemspecPath(t *testing.T) {
+	t.Parallel()
+	spec.Run(t, "App with relative gemspec path", func(t *testing.T, when spec.G, it spec.S) {
+		var app cfapi.App
+		var err error
+		var g *GomegaWithT
+		var Expect func(actual interface{}, extra ...interface{}) GomegaAssertion
+		var Eventually func(actual interface{}, intervals ...interface{}) GomegaAsyncAssertion
+		it.Before(func() {
+			g = NewGomegaWithT(t)
+			Expect = g.Expect
+			Eventually = g.Eventually
+		})
+		it.After(func() {
+			if app != nil {
+				app.Destroy()
+			}
+		})
+		it.Before(func() {
+			app, err = cluster.NewApp(bpDir, "relative_gemspec_path")
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-// var _ = Describe("App with relative gemspec path", func() {
-// 	var app *cutlass.App
-// 	AfterEach(func() { app = DestroyApp(app) })
-
-// 	BeforeEach(func() {
-// 		app = cutlass.New(filepath.Join(bpDir, "fixtures", "relative_gemspec_path"))
-// 	})
-
-// 	It("loads the gem with the relative gemspec path", func() {
-// 		PushAppAndConfirm(app)
-// 		Expect(app.Stdout.String()).To(ContainSubstring("Using hola 0.0.0 from source at `gems/hola`"))
-// 	})
-// })
+		it("loads the gem with the relative gemspec path", func() {
+			Expect(app.PushAndConfirm()).To(Succeed())
+			Expect(app.Log()).To(ContainSubstring("Using hola 0.0.0 from source at `gems/hola`"))
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}
