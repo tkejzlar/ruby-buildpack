@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"nginx/int2/cfapi/utils"
 	"os"
 	"os/exec"
 	"regexp"
 	"syscall"
 	"time"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi/utils"
 )
 
 type App struct {
@@ -152,4 +153,24 @@ func (a *App) GetBody(path string) (string, error) {
 		return "", err
 	}
 	return utils.HttpGetBody(url)
+}
+
+func (a *App) Files(path string) ([]string, error) {
+	return []string{}, fmt.Errorf("not implemented")
+	// 	cmd := exec.Command("tar", "--list", "-f", a.name+".droplet", "./"+path)
+	// 	cmd.Stderr = &a.Stderr
+	// 	cmd.Dir = a.tmpPath
+	// 	output, err := cmd.Output()
+	// 	if err != nil {
+	// 		return []string{}, err
+	// 	}
+	// 	return strings.Split(string(output), "\n"), nil
+}
+
+func (a *App) RunTask(command string) ([]byte, error) {
+	return []byte(""), fmt.Errorf("not implemented")
+}
+
+func (a *App) ResetLog() {
+	a.Stdout.Reset()
 }

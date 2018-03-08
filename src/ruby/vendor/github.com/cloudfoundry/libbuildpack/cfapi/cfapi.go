@@ -1,7 +1,7 @@
 package cfapi
 
 import (
-	"nginx/int2/cfapi/models"
+	"github.com/cloudfoundry/libbuildpack/cfapi/models"
 )
 
 type Cluster models.Cluster

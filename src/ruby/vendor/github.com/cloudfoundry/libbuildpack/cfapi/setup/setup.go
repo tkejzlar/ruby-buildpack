@@ -2,11 +2,12 @@ package setup
 
 import (
 	"fmt"
-	"nginx/int2/cfapi"
-	"nginx/int2/cfapi/cflocal"
-	"nginx/int2/cfapi/foundation"
-	"nginx/int2/cfapi/pack"
 	"time"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi"
+	"github.com/cloudfoundry/libbuildpack/cfapi/cflocal"
+	"github.com/cloudfoundry/libbuildpack/cfapi/foundation"
+	"github.com/cloudfoundry/libbuildpack/cfapi/pack"
 
 	"github.com/cloudfoundry/libbuildpack/cutlass"
 	"github.com/onsi/gomega"

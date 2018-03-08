@@ -4,12 +4,8 @@
 required = ["github.com/google/subcommands"]
 
 [[constraint]]
-  branch = "master"
   name = "github.com/cloudfoundry/libbuildpack"
-
-[[constraint]]
-  name = "github.com/kr/text"
-  branch = "master"
+  branch = "redointtests"
 
 [[constraint]]
   name = "github.com/golang/mock"
@@ -21,6 +17,18 @@ required = ["github.com/google/subcommands"]
 
 [[constraint]]
   name = "github.com/onsi/gomega"
+  branch = "master"
+
+[[constraint]]
+  branch = "v1"
+  name = "gopkg.in/jarcoal/httpmock.v1"
+
+[[constraint]]
+  name = "github.com/sclevine/spec"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/moby/moby"
   branch = "master"
 
 [[override]]

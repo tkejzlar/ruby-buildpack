@@ -14,16 +14,18 @@
   version = "v3.5.1"
 
 [[projects]]
-  branch = "master"
+  branch = "redointtests"
   name = "github.com/cloudfoundry/libbuildpack"
   packages = [
     ".",
     "ansicleaner",
     "bratshelper",
+    "cfapi",
+    "cfapi/setup",
     "cutlass",
     "packager"
   ]
-  revision = "a7777ea611041ac662c167a674b16f82babe4ce9"
+  revision = "029725ea93caab22ac0f9c56cb5c0ebc1713cbb9"
 
 [[projects]]
   name = "github.com/elazarl/goproxy"
@@ -93,6 +95,12 @@
     "types"
   ]
   revision = "de89e61d40b75aa971a9fc3eae7f4fefabd6e0ee"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/sclevine/spec"
+  packages = ["."]
+  revision = "b2a18c83f7093235f63f9f6862449a8b68ff84a5"
 
 [[projects]]
   name = "github.com/tidwall/gjson"
@@ -165,6 +173,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "065687f87432316c915c67d3bb69cd35aebff36814947fe5139742452e17f78d"
+  inputs-digest = "8ab31bf9e082a687b30ee51b857292a7fa632aefbba1d2859e339b7f571629ae"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -2,10 +2,11 @@ package cflocal
 
 import (
 	"io/ioutil"
-	"nginx/int2/cfapi/models"
-	"nginx/int2/cfapi/utils"
 	"os"
 	"path/filepath"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi/models"
+	"github.com/cloudfoundry/libbuildpack/cfapi/utils"
 )
 
 type Cluster struct {
@@ -70,4 +71,7 @@ func (c *Cluster) buildpack(buildpack string) string {
 
 func (c *Cluster) HasMultiBuildpack() bool {
 	return true
+}
+func (c *Cluster) HasTask() bool {
+	return false
 }

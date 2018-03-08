@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"nginx/int2/cfapi/utils"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi/utils"
 
 	"github.com/cloudfoundry/libbuildpack"
 	"github.com/docker/docker/api/types"
@@ -266,4 +267,21 @@ func (a *App) GetBody(path string) (string, error) {
 
 func (a *App) Log() string {
 	return a.Stdout.String()
+}
+
+func (a *App) Files(path string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(filepath.Join(a.tmpPath, "app", path), func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+	return files, err
+}
+
+func (a *App) RunTask(command string) ([]byte, error) {
+	return []byte(""), fmt.Errorf("not implemented")
+}
+
+func (a *App) ResetLog() {
+	a.Stdout.Reset()
 }

@@ -2,9 +2,10 @@ package foundation
 
 import (
 	"fmt"
-	"nginx/int2/cfapi/models"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi/models"
 
 	"github.com/blang/semver"
 	"github.com/cloudfoundry/libbuildpack/cutlass"

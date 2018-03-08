@@ -6,6 +6,7 @@ type Cluster interface {
 	NewApp(bpDir, fixtureName string) (App, error)
 
 	HasMultiBuildpack() bool
+	HasTask() bool
 }
 
 type App interface {
@@ -18,4 +19,7 @@ type App interface {
 	// Get(path string, headers map[string]string) (string, map[string][]string, error)
 	GetBody(path string) (string, error)
 	Log() string
+	ResetLog()
+	Files(string) ([]string, error)
+	RunTask(command string) ([]byte, error)
 }

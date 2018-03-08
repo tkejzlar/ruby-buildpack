@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"nginx/int2/cfapi/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+
+	"github.com/cloudfoundry/libbuildpack/cfapi/utils"
 
 	"github.com/tidwall/gjson"
 )
@@ -261,4 +263,28 @@ func (a *App) InstanceStates() ([]string, error) {
 		states = append(states, value.State)
 	}
 	return states, nil
+}
+
+func (a *App) Files(path string) ([]string, error) {
+	cmd := exec.Command("cf", "ssh", a.name, "-c", "find "+path)
+	cmd.Stderr = &a.Stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return []string{}, err
+	}
+	return strings.Split(string(output), "\n"), nil
+}
+
+func (a *App) RunTask(command string) ([]byte, error) {
+	cmd := exec.Command("cf", "run-task", a.name, command)
+	cmd.Stderr = &a.Stderr
+	bytes, err := cmd.Output()
+	if err != nil {
+		return bytes, err
+	}
+	return bytes, nil
+}
+
+func (a *App) ResetLog() {
+	a.Stdout.Reset()
 }
