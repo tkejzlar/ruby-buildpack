@@ -288,8 +288,11 @@ func (a *App) Log() string {
 
 func (a *App) Files(path string) ([]string, error) {
 	files := []string{}
-	err := filepath.Walk(filepath.Join(a.tmpPath, "app", path), func(path string, info os.FileInfo, err error) error {
-		files = append(files, path)
+	err := filepath.Walk(filepath.Join(a.tmpPath, path), func(path string, info os.FileInfo, err error) error {
+		path, err = filepath.Rel(a.tmpPath, path)
+		if err == nil {
+			files = append(files, "/"+path)
+		}
 		return nil
 	})
 	return files, err
