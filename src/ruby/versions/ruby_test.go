@@ -88,6 +88,20 @@ var _ = Describe("Ruby", func() {
 			})
 		})
 
+		Context("Gemfile.lock has jruby platform", func() {
+			BeforeEach(func() {
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile"), []byte(`ruby "~>2.2.0"`), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(filepath.Join(tmpDir, "Gemfile.lock"), []byte(jrubyGemfileLockFixture), 0644)).To(Succeed())
+			})
+
+			It("returns false", func() {
+				v := versions.New(tmpDir, manifest)
+				result, err := v.HasWindowsGemfileLock()
+				Expect(err).To(BeNil())
+				Expect(result).To(BeFalse())
+			})
+		})
+
 		Context("Gemfile.lock does not exist", func() {
 			It("returns false", func() {
 				v := versions.New(tmpDir, manifest)

@@ -181,7 +181,11 @@ func (v *Versions) HasWindowsGemfileLock() (bool, error) {
 	  return false if !File.exists?(input["gemfilelock"])
 		parsed = Bundler::LockfileParser.new(File.read(input["gemfilelock"]))
 		parsed.platforms.detect do |platform|
-      /ruby|jruby/.match(platform) if platform.is_a?(String)
+		  if platform.is_a?(String)
+        /ruby/.match(platform)
+			elsif platform.is_a?(Gem::Platform)
+			  /java/.match(platform.os)
+			end
     end.nil?
 	`
 
