@@ -53,10 +53,16 @@ dependencies:
   - cflinuxfs3
 - name: node
   version: 6.14.3
-  uri: https://buildpacks.cloudfoundry.org/dependencies/node/node-6.14.3-linux-x64-ae2a82a5.tgz
-  sha256: ae2a82a56876634d0aaba064fc1c775cd1256596dcd9d5c50ead3ac12c4852c7
+  uri: https://buildpacks.cloudfoundry.org/dependencies/node/node-6.14.3-linux-x64-cflinuxfs2-85040cad.tgz
+  sha256: 85040cad450e177e80c8ccfaf8fe5bb567fa302aee15b51ace7c17b6ca558fa3
   cf_stacks:
   - cflinuxfs2
+- name: node
+  version: 6.14.3
+  uri: https://buildpacks.cloudfoundry.org/dependencies/node/node-6.14.3-linux-x64-cflinuxfs3-5f0d49c8.tgz
+  sha256: 5f0d49c84419c3ba48f46b959eef1b116b3c3e6b93e73cfa766b30b1664aa874
+  cf_stacks:
+  - cflinuxfs3
 - name: openjdk1.8-latest
   version: 1.8.0
   uri: https://buildpacks.cloudfoundry.org/dependencies/manual-binaries/jruby/openjdk-1.8.0_172-9287eda1.tar.gz
