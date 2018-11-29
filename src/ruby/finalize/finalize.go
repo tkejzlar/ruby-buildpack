@@ -258,6 +258,9 @@ func (f *Finalizer) PrecompileAssets() error {
 
 	f.Log.Info("Asset precompilation completed (%v)", time.Since(startTime))
 
+	// assets:clean if using sprockets
+
+	// Do NOT assets:clean when using webpacker
 	if f.RailsVersion < 5 && f.RailsVersion >= 4 && err == nil {
 		f.Log.Info("Cleaning assets")
 		cmd = exec.Command("bundle", "exec", "rake", "assets:clean")
