@@ -261,7 +261,11 @@ func (f *Finalizer) PrecompileAssets() error {
 	// assets:clean if using sprockets
 
 	// Do NOT assets:clean when using webpacker
-	if f.RailsVersion < 5 && f.RailsVersion >= 4 && err == nil {
+	//usesWebpackGem,err := f.Versions.HasGem("webpacker")
+	//if err != nil{
+	//	return err
+	//}
+	if f.RailsVersion >= 4 && err == nil {
 		f.Log.Info("Cleaning assets")
 		cmd = exec.Command("bundle", "exec", "rake", "assets:clean")
 		cmd.Dir = f.Stager.BuildDir()
