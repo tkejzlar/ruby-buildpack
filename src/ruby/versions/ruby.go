@@ -19,21 +19,34 @@ type Manifest interface {
 }
 
 type Versions struct {
-	buildDir    string
-	manifest    Manifest
-	cachedSpecs map[string]string
+	buildDir       string
+	depDir         string
+	manifest       Manifest
+	cachedSpecs    map[string]string
+	bundlerVersion string
 }
 
-func New(buildDir string, manifest Manifest) *Versions {
+func New(buildDir string, depDir string, manifest Manifest) *Versions {
+	bundlerVersions := manifest.AllDependencyVersions("bundler")
+	bundlerVersion := ""
+	if len(bundlerVersions) > 0 {
+		bundlerVersion = bundlerVersions[len(bundlerVersions)-1]
+	}
 	return &Versions{
-		buildDir: buildDir,
-		manifest: manifest,
+		buildDir:       buildDir,
+		depDir:         depDir,
+		manifest:       manifest,
+		bundlerVersion: bundlerVersion,
 	}
 }
 
 type output struct {
 	Error  string      `json:"error"`
 	Output interface{} `json:"output"`
+}
+
+func (v *Versions) SetBundlerVersion(version string) {
+	v.bundlerVersion = version
 }
 
 func (v *Versions) Engine() (string, error) {
@@ -247,14 +260,23 @@ func (v *Versions) run(dir, code string, in interface{}) (interface{}, error) {
 		end
 	`, code)
 
-	cmd := exec.Command("ruby", "-rjson", "-rbundler", "-e", code)
+	args := []string{"-rjson", "-e", code}
+	if strings.Contains(code, "Bundler::") {
+		bundlerPath := filepath.Join(v.depDir, "bundler", "gems", fmt.Sprintf("bundler-%s", v.bundlerVersion), "lib")
+		args = append([]string{fmt.Sprintf("-I%s", bundlerPath), "-rbundler"}, args...)
+	}
+
+	cmd := exec.Command("ruby", args...)
 	cmd.Dir = dir
 	cmd.Stdin = strings.NewReader(string(data))
-	body, err := cmd.Output()
+	body, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(body)
+		fmt.Println(string(body))
 		return "", err
 	}
+
+	fmt.Println(string(string(body)))
+
 	output := struct {
 		Error string      `json:"error"`
 		Data  interface{} `json:"data"`

@@ -108,21 +108,25 @@ func (f *Finalizer) Setup() error {
 
 	f.Gem12Factor, err = f.Versions.HasGem("rails_12factor")
 	if err != nil {
+		f.Log.Error("HERE 1")
 		return err
 	}
 
 	f.GemStdoutLogging, err = f.Versions.HasGem("rails_stdout_logging")
 	if err != nil {
+		f.Log.Error("HERE 2")
 		return err
 	}
 
 	f.GemStaticAssets, err = f.Versions.HasGem("rails_serve_static_assets")
 	if err != nil {
+		f.Log.Error("HERE 3")
 		return err
 	}
 
 	f.RailsVersion, err = f.Versions.GemMajorVersion("rails")
 	if err != nil {
+		f.Log.Error("HERE 4")
 		return err
 	}
 

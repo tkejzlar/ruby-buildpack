@@ -105,7 +105,27 @@ var _ = Describe("Supply", func() {
 		Expect(err).To(BeNil())
 	})
 
-	PIt("InstallBundler", func() {})
+	Describe("InstallBundler", func() {
+
+		var tempSupplier supply.Supplier
+
+		BeforeEach(func() {
+			tempSupplier = *supplier
+			mockStager := NewMockStager(mockCtrl)
+			tempSupplier.Stager = mockStager
+
+			mockManifest.EXPECT().AllDependencyVersions("bundler").Return([]string{"1.17.2"})
+			mockInstaller.EXPECT().InstallDependency(libbuildpack.Dependency{Name: "bundler", Version: "1.17.2"}, gomock.Any())
+			mockStager.EXPECT().LinkDirectoryInDepDir(gomock.Any(), gomock.Any())
+			mockStager.EXPECT().DepDir().AnyTimes()
+		})
+
+		It("installs bundler version matching constraint given", func() {
+			Expect(tempSupplier.InstallBundler("1.X.X")).To(Succeed())
+		})
+	})
+
+
 	PIt("InstallNode", func() {})
 	PIt("InstallRuby", func() {})
 

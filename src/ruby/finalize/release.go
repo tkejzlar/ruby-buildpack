@@ -8,6 +8,7 @@ type Versions interface {
 	HasGem(string) (bool, error)
 	GemMajorVersion(string) (int, error)
 	HasGemVersion(string, ...string) (bool, error)
+	SetBundlerVersion(string)
 }
 
 func (f *Finalizer) GenerateReleaseYaml() (map[string]map[string]string, error) {
