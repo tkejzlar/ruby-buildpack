@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
-	"github.com/Masterminds/semver"
 	"io"
 	"io/ioutil"
 	"os"
@@ -36,6 +35,8 @@ type Installer interface {
 
 type Versions interface {
 	SetBundlerVersion(string)
+	GetBundlerVersion() string
+	CheckRubyAndBundlerVersions() (bool, error)
 	Engine() (string, error)
 	Version() (string, error)
 	JrubyVersion() (string, error)
@@ -79,7 +80,6 @@ type Supplier struct {
 	needsNode         bool
 	appHasGemfile     bool
 	appHasGemfileLock bool
-	bundlerVersion    string
 }
 
 func Run(s *Supplier) error {
@@ -101,12 +101,10 @@ func Run(s *Supplier) error {
 		return err
 	}
 
-	if err := s.InstallProperBundler(); err != nil {
-		s.Log.Error("Unable to install bundlers: %s", err.Error())
+	if err := s.InstallBundler(); err != nil {
+		s.Log.Error("Unable to install bundler: %s", err.Error())
 		return err
 	}
-
-	s.Versions.SetBundlerVersion(s.bundlerVersion)
 
 	engine, rubyVersion, err := s.DetermineRuby()
 	if err != nil {
@@ -274,24 +272,6 @@ func (s *Supplier) InstallYarn() error {
 	return s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "yarn", "bin"), "bin")
 }
 
-func (s *Supplier) InstallBundler(constraint string) error {
-	bundlerVersions := s.Manifest.AllDependencyVersions("bundler")
-	version, err := libbuildpack.FindMatchingVersion(constraint, bundlerVersions)
-
-	s.bundlerVersion = version
-	bundlerInstallDir := filepath.Join(s.Stager.DepDir(), "bundler")
-	if err != nil {
-		return fmt.Errorf("failure to install Bundler matching constraint, %s: %s", constraint, err)
-	}
-	if err := s.Installer.InstallDependency(libbuildpack.Dependency{Name: "bundler", Version: version}, bundlerInstallDir); err != nil {
-		return err
-	}
-	if err := s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "bundler", "bin"), "bin"); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (s *Supplier) InstallNode() error {
 	var dep libbuildpack.Dependency
 
@@ -430,7 +410,7 @@ func (s *Supplier) SymlinkBundlerIntoRubygems() error {
 		return fmt.Errorf("Unable to determine ruby engine: %s", err)
 	}
 
-	bundlerVersion := s.bundlerVersion
+	bundlerVersion := s.Versions.GetBundlerVersion()
 
 	destDir := filepath.Join(s.Stager.DepDir(), "ruby", "lib", "ruby", "gems", rubyEngineVersion, "gems")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
@@ -453,16 +433,27 @@ func (s *Supplier) SymlinkBundlerIntoRubygems() error {
 	return os.Symlink(relPath, destFile)
 }
 
-func (s *Supplier) InstallProperBundler() error {
-	if err := s.bundlerSmokeTest("2.X.X"); err != nil {
-		os.RemoveAll(filepath.Join(s.Stager.DepDir(), "bundler"))
-
-		err2 := s.bundlerSmokeTest("1.X.X")
-		if err2 != nil {
-			return fmt.Errorf("bundler v2.X.X error: %s \n bundler v1.X.X error: %s", err, err2)
-		}
+func (s *Supplier) InstallBundler() error {
+	if !s.appHasGemfile {
+		return s.installBundlerVersion(s.Versions.GetBundlerVersion())
 	}
-	return nil
+
+	if err := s.installBundlerVersion("2.X.X"); err != nil {
+		return err
+	}
+
+	if ok, err := s.Versions.CheckRubyAndBundlerVersions(); err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+
+	if err := os.RemoveAll(filepath.Join(s.Stager.DepDir(), "bundler")); err != nil {
+		return err
+	}
+
+	s.Log.Warning("Bundler 2 is not compatible with the requested version of ruby. Trying Bundler 1...")
+	return s.installBundlerVersion("1.X.X")
 }
 
 func (s *Supplier) UpdateRubygems() error {
@@ -593,7 +584,7 @@ func (s *Supplier) InstallGems() error {
 		args = append(args, "--deployment")
 	}
 
-	s.Log.BeginStep("Installing dependencies using bundler %s", s.bundlerVersion)
+	s.Log.BeginStep("Installing dependencies using bundler %s", s.Versions.GetBundlerVersion())
 	s.Log.Info("Running: bundle %s", strings.Join(args, " "))
 
 	env := os.Environ()
@@ -842,9 +833,17 @@ func (s *Supplier) warnBundleConfig() {
 	}
 }
 
-func (s *Supplier) bundlerSmokeTest(bundlerVersion string) error {
-	if err := s.InstallBundler(bundlerVersion); err != nil {
-		s.Log.Error("Unable to install bundlers: %s", err.Error())
+func (s *Supplier) installBundlerVersion(constraint string) error {
+	version, err := libbuildpack.FindMatchingVersion(constraint, s.Manifest.AllDependencyVersions("bundler"))
+	if err != nil {
+		return fmt.Errorf("failure to install Bundler matching constraint, %s: %s", constraint, err)
+	}
+
+	if err := s.Installer.InstallDependency(libbuildpack.Dependency{Name: "bundler", Version: version}, filepath.Join(s.Stager.DepDir(), "bundler")); err != nil {
+		return err
+	}
+
+	if err := s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "bundler", "bin"), "bin"); err != nil {
 		return err
 	}
 
@@ -858,48 +857,7 @@ func (s *Supplier) bundlerSmokeTest(bundlerVersion string) error {
 		return err
 	}
 
-	// change this script to raise an error if bundler version >= 2.0.0 and ruby version < 2.2.*
-	engine, err := s.Versions.Engine()
-	if err != nil {
-		return err
-	}
-
-	if engine == "jruby" {
-		return nil
-	}
-
-	version, err := s.Versions.Version()
-	if err != nil || version == "" {
-		return err
-	}
-
-
-	rubyConstraint, err := semver.NewConstraint("<= 2.2.X")
-	if err != nil {
-		return err
-	}
-
-	bundlerConstraint, err := semver.NewConstraint(">= 2.X.X")
-	if err != nil {
-		return err
-	}
-
-	bundlerVer, err := semver.NewVersion(s.bundlerVersion)
-	if err != nil {
-		s.Log.Error("invalid semver on bundle ver %s", s.bundlerVersion)
-		return err
-	}
-
-	rubyVer, err := semver.NewVersion(version)
-	if err != nil {
-		s.Log.Error("invalid semver on ruby ver %s", version)
-		return err
-	}
-
-	if engine == "ruby" && rubyConstraint.Check(rubyVer) && bundlerConstraint.Check(bundlerVer) {
-		return fmt.Errorf("ruby version %s does not support bundler version %s", version, bundlerVersion)
-	}
+	s.Versions.SetBundlerVersion(version)
 
 	return nil
-
 }
