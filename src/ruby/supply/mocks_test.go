@@ -211,6 +211,31 @@ func (mr *MockVersionsMockRecorder) SetBundlerVersion(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBundlerVersion", reflect.TypeOf((*MockVersions)(nil).SetBundlerVersion), arg0)
 }
 
+// GetBundlerVersion mocks base method
+func (m *MockVersions) GetBundlerVersion() string {
+	ret := m.ctrl.Call(m, "GetBundlerVersion")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetBundlerVersion indicates an expected call of GetBundlerVersion
+func (mr *MockVersionsMockRecorder) GetBundlerVersion() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBundlerVersion", reflect.TypeOf((*MockVersions)(nil).GetBundlerVersion))
+}
+
+// CheckRubyAndBundlerVersions mocks base method
+func (m *MockVersions) CheckRubyAndBundlerVersions() (bool, error) {
+	ret := m.ctrl.Call(m, "CheckRubyAndBundlerVersions")
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckRubyAndBundlerVersions indicates an expected call of CheckRubyAndBundlerVersions
+func (mr *MockVersionsMockRecorder) CheckRubyAndBundlerVersions() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckRubyAndBundlerVersions", reflect.TypeOf((*MockVersions)(nil).CheckRubyAndBundlerVersions))
+}
+
 // Engine mocks base method
 func (m *MockVersions) Engine() (string, error) {
 	ret := m.ctrl.Call(m, "Engine")

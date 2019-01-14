@@ -106,6 +106,16 @@ func Run(s *Supplier) error {
 		return err
 	}
 
+	if err := s.CreateDefaultEnv(); err != nil {
+		s.Log.Error("Unable to setup default environment: %s", err.Error())
+		return err
+	}
+
+	if err := s.EnableLDLibraryPathEnv(); err != nil {
+		s.Log.Error("Unable to enable ld_library_path env: %s", err.Error())
+		return err
+	}
+
 	engine, rubyVersion, err := s.DetermineRuby()
 	if err != nil {
 		s.Log.Error("Unable to determine ruby: %s", err.Error())
@@ -844,16 +854,6 @@ func (s *Supplier) installBundlerVersion(constraint string) error {
 	}
 
 	if err := s.Stager.LinkDirectoryInDepDir(filepath.Join(s.Stager.DepDir(), "bundler", "bin"), "bin"); err != nil {
-		return err
-	}
-
-	if err := s.CreateDefaultEnv(); err != nil {
-		s.Log.Error("Unable to setup default environment: %s", err.Error())
-		return err
-	}
-
-	if err := s.EnableLDLibraryPathEnv(); err != nil {
-		s.Log.Error("Unable to enable ld_library_path env: %s", err.Error())
 		return err
 	}
 

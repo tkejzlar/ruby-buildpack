@@ -324,13 +324,10 @@ func (v *Versions) run(dir, code string, in interface{}) (interface{}, error) {
 	cmd := exec.Command("ruby", args...)
 	cmd.Dir = dir
 	cmd.Stdin = strings.NewReader(string(data))
-	body, err := cmd.CombinedOutput()
+	body, err := cmd.Output()
 	if err != nil {
-		fmt.Println(string(body))
 		return "", err
 	}
-
-	fmt.Println(string(body))
 
 	output := struct {
 		Error string      `json:"error"`
