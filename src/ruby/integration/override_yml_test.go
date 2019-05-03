@@ -31,7 +31,7 @@ var _ = Describe("override yml", func() {
 		app.Buildpacks = []string{buildpackName + "_buildpack", "ruby_buildpack"}
 	})
 
-	It("Forces nodejs from override buildpack, installs ruby from ruby buildpack", func() {
+	FIt("Forces nodejs from override buildpack, installs ruby from ruby buildpack", func() {
 		Expect(app.Push()).ToNot(Succeed())
 		Expect(app.Stdout.String()).To(ContainSubstring("-----> OverrideYML Buildpack"))
 		Expect(app.ConfirmBuildpack(buildpackVersion)).To(Succeed())
